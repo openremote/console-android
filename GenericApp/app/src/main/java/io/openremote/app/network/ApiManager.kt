@@ -1,11 +1,14 @@
-package io.openremote.orlib.network
+package io.openremote.app.network
 
 import android.net.Uri
 import android.util.Log
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.openremote.orlib.models.ORAppConfig
+import com.fasterxml.jackson.module.kotlin.readValue
+import io.openremote.app.model.ORAppInfo
+import io.openremote.app.model.ORConsoleConfig
 import java.net.HttpURLConnection
 import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 import kotlin.concurrent.thread
 
 
@@ -13,26 +16,28 @@ typealias ResponseBlock<T> = (statusCode: Int, model: T?, error: Throwable?) -> 
 
 class ApiManager(private val baseUrl: String) {
 
+    val mapper = jacksonObjectMapper()
+
     enum class HttpMethod {
         GET,
         POST,
         PUT,
     }
 
-    fun getAppConfig(realm: String, callback: ResponseBlock<ORAppConfig>?) {
-        val uri = Uri.parse(baseUrl)
-        val url = URL("${uri.scheme}://${uri.host}/consoleappconfig/${realm}.json")
-        with(url.openConnection() as HttpURLConnection) {
-            requestMethod = HttpMethod.GET.toString()
-            setRequestProperty("Accept", "application/json")
-            thread(start = true) {
-                parseResponse(this, callback)
-            }
-        }
+    fun getApps(callback: ResponseBlock<List<String>>?) {
+        get(arrayOf("apps"), callback)
+    }
+
+    fun getAppInfos(callback: ResponseBlock<Map<String, ORAppInfo>>?) {
+        get(arrayOf("apps", "info"), callback)
+    }
+
+    fun getConsoleConfig(callback: ResponseBlock<ORConsoleConfig>?) {
+        get(arrayOf("apps", "consoleConfig"), callback)
     }
 
     /*********************************Private functions*******************************/
-    private fun createUrlRequest(
+    fun createUrlRequest(
         method: HttpMethod,
         pathComponents: Array<String>,
         queryParameters: Map<String, Any>? = null
@@ -50,8 +55,7 @@ class ApiManager(private val baseUrl: String) {
         }
 
         val url = URL(builder.build().toString())
-        with(url.openConnection() as HttpURLConnection) {
-
+        with(url.openConnection() as HttpsURLConnection) {
             requestMethod = method.toString()
             setRequestProperty("Accept", "application/json")
 
@@ -64,7 +68,7 @@ class ApiManager(private val baseUrl: String) {
         }
     }
 
-    private inline fun <reified T : Any> get(
+    inline fun <reified T : Any> get(
         pathComponents: Array<String>,
         noinline callback: ResponseBlock<T>?,
         queryParameters: Map<String, Any>? = null
@@ -102,7 +106,7 @@ class ApiManager(private val baseUrl: String) {
         }
     }
 
-    private inline fun <reified T : Any> parseResponse(
+    inline fun <reified T : Any> parseResponse(
         httpConnection: HttpURLConnection,
         noinline callback: ResponseBlock<T>?
     ) {
@@ -110,9 +114,8 @@ class ApiManager(private val baseUrl: String) {
             val parsedResult = try {
                 if (this.responseCode in 200..299) {
                     Triple(
-                        this.responseCode, jacksonObjectMapper().readValue(
-                            this.inputStream.bufferedReader().readText(),
-                            T::class.java
+                        this.responseCode, mapper.readValue<T>(
+                            this.inputStream.bufferedReader().readText()
                         ), null
                     )
                 } else {
@@ -134,7 +137,7 @@ class ApiManager(private val baseUrl: String) {
     private fun HttpURLConnection.writeBody(item: Any) {
         val outputWriter = outputStream.bufferedWriter()
         outputWriter.write(
-            jacksonObjectMapper().writeValueAsString(item)
+            mapper.writeValueAsString(item)
         )
         outputWriter.flush()
     }
