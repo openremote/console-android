@@ -1,0 +1,46 @@
+name: CI/CD
+
+on:
+  # Push on main excluding tags
+  push:
+    branches:
+      - 'main'
+    tags-ignore:
+      - '*.*'
+
+jobs:
+
+  build:
+    name: CI/CD
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Cancel previous runs
+        uses: styfle/cancel-workflow-action@0.12.1
+        with:
+          access_token: ${{ github.token }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 and gradle cache
+        id: java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Run build
+        run: |
+          cd GenericApp
+          gradle build
+
+      - name: Upload APKs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: |
+            **/*.apk
