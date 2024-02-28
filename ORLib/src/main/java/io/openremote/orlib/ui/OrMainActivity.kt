@@ -34,8 +34,10 @@ import io.openremote.orlib.ORConstants.CLEAR_URL
 import io.openremote.orlib.R
 import io.openremote.orlib.databinding.ActivityOrMainBinding
 import io.openremote.orlib.service.BleProvider
+import io.openremote.orlib.service.ConnectivityChangeReceiver
 import io.openremote.orlib.service.GeofenceProvider
 import io.openremote.orlib.service.QrScannerProvider
+import io.openremote.orlib.shared.SharedData.offlineActivity
 import org.json.JSONException
 import org.json.JSONObject
 import java.util.logging.Level
@@ -60,11 +62,10 @@ open class OrMainActivity : Activity() {
 
     private var mapper = jacksonObjectMapper()
     private val connectivityChangeReceiver: ConnectivityChangeReceiver =
-        ConnectivityChangeReceiver()
+        ConnectivityChangeReceiver(onConnectivityChanged = ::onConnectivityChanged)
     private var timeOutHandler: Handler? = null
     private var timeOutRunnable: Runnable? = null
     private var progressBar: ProgressBar? = null
-    private var webViewTimeout = ORConstants.WEBVIEW_LOAD_TIMEOUT_DEFAULT
     private var webViewLoaded = false
     private var geofenceProvider: GeofenceProvider? = null
     private var qrScannerProvider: QrScannerProvider? = null
@@ -73,7 +74,7 @@ open class OrMainActivity : Activity() {
     private var connectFailCount: Int = 0
     private var connectFailResetHandler: Handler? = null
     private var connectFailResetRunnable: Runnable? = null
-    private var baseUrl: String? = null
+    protected var baseUrl: String? = null
     private var onDownloadCompleteReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctxt: Context, intent: Intent) {
             val action = intent.action
@@ -90,14 +91,12 @@ open class OrMainActivity : Activity() {
         val view = binding.root
         setContentView(view)
 
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
-
-        try {
-            val timeoutStr = getString(R.string.OR_CONSOLE_LOAD_TIMEOUT)
-            webViewTimeout = timeoutStr.toInt()
-        } catch (nfe: NumberFormatException) {
-            println("Could not parse console load timeout value: $nfe")
+        if(!connectivityChangeReceiver.isInternetAvailable(this)) {
+            val intent = Intent(this, offlineActivity)
+            startActivity(intent)
         }
+
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
 
         // Enable remote debugging of WebView from Chrome Debugger tools
         if (0 != applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) {
@@ -118,11 +117,6 @@ open class OrMainActivity : Activity() {
         if (intent.hasExtra(BASE_URL_KEY)) {
             baseUrl = intent.getStringExtra(BASE_URL_KEY)
         }
-
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
-
-        val host = sharedPreferences.getString(ORConstants.HOST_KEY, null)
-        val realm = sharedPreferences.getString(ORConstants.REALM_KEY, null)
 
         openIntentUrl(intent)
     }
@@ -160,13 +154,17 @@ open class OrMainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        registerReceiver(
+        ContextCompat.registerReceiver(
+            this,
             connectivityChangeReceiver,
-            IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
+            IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION),
+            ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        registerReceiver(
+        ContextCompat.registerReceiver(
+            this,
             onDownloadCompleteReceiver,
-            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
         )
     }
 
@@ -198,11 +196,11 @@ open class OrMainActivity : Activity() {
 
     private fun reloadWebView() {
         var url = binding.webView.url
-        if ("about:blank" == url) {
+        if ("about:blank" == url || url == null) {
             url = baseUrl
-            LOG.fine("Reloading web view: $url")
-            loadUrl(url!!)
         }
+        LOG.fine("Reloading web view: $url")
+        loadUrl(url!!)
     }
 
 
@@ -462,9 +460,13 @@ open class OrMainActivity : Activity() {
     }
 
     fun loadUrl(url: String) {
-        webViewLoaded = false
-        val encodedUrl = url.replace(" ", "%20")
-        binding.webView.loadUrl(encodedUrl)
+        if (connectivityChangeReceiver.isInternetAvailable(this)) {
+            webViewLoaded = false
+            val encodedUrl = url.replace(" ", "%20")
+            binding.webView.loadUrl(encodedUrl)
+        } else {
+            Toast.makeText(this, "Check your connection", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -969,14 +971,6 @@ open class OrMainActivity : Activity() {
             reloadWebView()
         } else {
             Toast.makeText(this, "Check your connection", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private inner class ConnectivityChangeReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-            val activeNetwork = cm.activeNetworkInfo
-            onConnectivityChanged(activeNetwork != null && activeNetwork.isConnectedOrConnecting)
         }
     }
 }
