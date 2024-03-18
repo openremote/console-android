@@ -66,6 +66,7 @@ open class OrMainActivity : Activity() {
     private var timeOutHandler: Handler? = null
     private var timeOutRunnable: Runnable? = null
     private var progressBar: ProgressBar? = null
+    private var webViewIsLoading = false
     private var webViewLoaded = false
     private var geofenceProvider: GeofenceProvider? = null
     private var qrScannerProvider: QrScannerProvider? = null
@@ -91,7 +92,7 @@ open class OrMainActivity : Activity() {
         val view = binding.root
         setContentView(view)
 
-        if(!connectivityChangeReceiver.isInternetAvailable(this)) {
+        if (!connectivityChangeReceiver.isInternetAvailable(this)) {
             val intent = Intent(this, offlineActivity)
             startActivity(intent)
         }
@@ -166,6 +167,9 @@ open class OrMainActivity : Activity() {
             IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
+        if (!webViewLoaded) {
+            reloadWebView()
+        }
     }
 
     override fun onPause() {
@@ -269,6 +273,7 @@ open class OrMainActivity : Activity() {
 
                 override fun onPageFinished(view: WebView, url: String) {
                     webViewLoaded = true
+                    webViewIsLoading = false
                     progressBar!!.visibility = View.GONE
                     timeOutRunnable?.let { timeOutHandler!!.removeCallbacks(it) }
                 }
@@ -461,11 +466,10 @@ open class OrMainActivity : Activity() {
 
     fun loadUrl(url: String) {
         if (connectivityChangeReceiver.isInternetAvailable(this)) {
+            webViewIsLoading = true
             webViewLoaded = false
             val encodedUrl = url.replace(" ", "%20")
             binding.webView.loadUrl(encodedUrl)
-        } else {
-            Toast.makeText(this, "Check your connection", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -496,12 +500,14 @@ open class OrMainActivity : Activity() {
                 })
         } else if (requestCode == pushResponseCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                notifyClient(hashMapOf(
-                    "action" to "PROVIDER_ENABLE",
-                    "provider" to "push",
-                    "hasPermission" to true,
-                    "success" to true
-                ))
+                notifyClient(
+                    hashMapOf(
+                        "action" to "PROVIDER_ENABLE",
+                        "provider" to "push",
+                        "hasPermission" to true,
+                        "success" to true
+                    )
+                )
             }
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -967,10 +973,8 @@ open class OrMainActivity : Activity() {
 
     private fun onConnectivityChanged(connectivity: Boolean) {
         LOG.info("Connectivity changed: $connectivity")
-        if (connectivity) {
+        if (connectivity && !webViewIsLoading) {
             reloadWebView()
-        } else {
-            Toast.makeText(this, "Check your connection", Toast.LENGTH_LONG).show()
         }
     }
 }
