@@ -219,6 +219,7 @@ open class OrMainActivity : Activity() {
             settings.cacheMode = WebSettings.LOAD_DEFAULT
             settings.domStorageEnabled = true
             settings.databaseEnabled = true
+            settings.setGeolocationEnabled(true)
             settings.setSupportMultipleWindows(true)
             webViewClient = object : WebViewClient() {
                 override fun onReceivedHttpError(
