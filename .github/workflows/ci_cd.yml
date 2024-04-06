@@ -8,6 +8,18 @@ on:
     tags-ignore:
       - '*.*'
 
+  # PR
+  pull_request:
+    branches:
+      - 'main'
+
+  # When a release is published
+  release:
+    types: [published]
+
+  # Manual trigger
+  workflow_dispatch:
+
 jobs:
 
   build:
@@ -32,15 +44,43 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Run build
+      - name: Check if main repo
+        id: is_main_repo
+        run: |
+          if [ $REPO_NAME == 'openremote/console-android' ]; then
+            echo "value=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          REPO_NAME: ${{ github.repository }}
+
+      - name: Run assemble
+        if: ${{ !steps.is_main_repo.outputs.value || github.event_name == 'pull_request' }}
         run: |
           cd GenericApp
-          gradle build
+          gradle assemble
 
-      - name: Upload APKs
+      - name: Run assemble and publish
+        if: ${{ steps.is_main_repo.outputs.value && github.event_name != 'pull_request' }}
+        run: |
+          command="gradle assemble publish -PsigningKey=$SIGNING_KEY -PsigningPassword=$SIGNING_PASSWORD -PpublishUsername=$MAVEN_USERNAME -PpublishPassword=$MAVEN_PASSWORD"
+          if [ "$EVENT_NAME" == "release" ]; then
+            command="$command -PappVersion=$MAVEN_TAG -PorlibVersion=$MAVEN_TAG"
+          fi
+          cd GenericApp
+          $command
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SIGNING_KEY: ${{ secrets._TEMP_MAVEN_SIGNING_KEY || secrets.MAVEN_SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets._TEMP_MAVEN_SIGNING_PASSWORD || secrets.MAVEN_SIGNING_PASSWORD }}
+          MAVEN_USERNAME: ${{ secrets._TEMP_MAVEN_USERNAME || secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets._TEMP_MAVEN_PASSWORD || secrets.MAVEN_PASSWORD }}
+          MAVEN_TAG: ${{ github.ref_name }}
+
+      - name: Upload build outputs
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: apks
+          name: build-outputs
           path: |
-            **/*.apk
+            **/build/outputs/**/*.aar
+            **/build/outputs/**/*.apk

@@ -6,7 +6,7 @@ plugins {
     id 'signing'
 }
 
-version = hasProperty("appVersion") ? appVersion : "1.1.1"
+version = hasProperty("appVersion") ? appVersion : "1.2.0-SNAPSHOT"
 
 android {
     defaultConfig {
