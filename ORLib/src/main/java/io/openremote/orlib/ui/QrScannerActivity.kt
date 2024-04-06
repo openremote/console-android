@@ -50,6 +50,7 @@ class QrScannerActivity : AppCompatActivity() {
         surfaceView = findViewById(R.id.surfaceView)
     }
 
+    @SuppressLint("MissingPermission")
     private fun initialiseDetectorsAndSources() {
         barcodeDetector = BarcodeDetector.Builder(this)
             .setBarcodeFormats(Barcode.QR_CODE)

@@ -1,0 +1,28 @@
+# Build and Release Folders
+bin-debug/
+bin-release/
+[Oo]bj/
+[Bb]in/
+[Bb]uild/
+[Oo]ut/
+[Tt]mp/
+
+# Other files and folders
+.settings/
+.gradle/
+.classpath/
+.classpath
+.project/
+.project
+.vscode/
+.idea/
+.local/
+.DS_*/
+
+# File extensions
+*.apk
+*.sh
+*.iml
+*.iws
+*~
+*.tar.gz
