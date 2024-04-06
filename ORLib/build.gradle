@@ -6,7 +6,7 @@ plugins {
     id 'signing'
 }
 
-version = hasProperty("orlibVersion") ? orlibVersion : "1.0"
+version = hasProperty("orlibVersion") ? orlibVersion : "1.2.0-SNAPSHOT"
 
 android {
     namespace 'io.openremote.orlib'
