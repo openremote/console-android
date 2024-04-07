@@ -2,7 +2,11 @@ plugins {
     id 'com.android.library'
     id 'kotlin-android'
     id 'org.jetbrains.kotlin.android'
+    id 'maven-publish'
+    id 'signing'
 }
+
+version = hasProperty("orlibVersion") ? orlibVersion : "1.0"
 
 android {
     namespace 'io.openremote.orlib'
@@ -12,7 +16,7 @@ android {
         compileSdk 34
         targetSdkVersion 34
         versionCode 1
-        versionName "1.0"
+        versionName version
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -45,10 +49,13 @@ android {
     lint {
         disable 'ProtectedPermissions'
     }
+    publishing {
+        singleVariant('release') {
+        }
+    }
 }
 
 dependencies {
-
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
@@ -59,4 +66,70 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:32.7.4')
     implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+}
+
+
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    archiveClassifier = 'sources'
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+
+                artifact sourcesJar
+
+                group = "io.openremote"
+                artifactId = "orlib"
+
+                pom {
+                    name = 'OpenRemote Android Library'
+                    description = 'Provides the Android OpenRemote Library'
+                    url = 'https://github.com/openremote/console-android'
+                    licenses {
+                        license {
+                            name = 'GNU Affero General Public License v3.0'
+                            url = 'https://www.gnu.org/licenses/agpl-3.0.en.html'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = 'developers'
+                            name = 'Developers'
+                            email = 'developers@openremote.io'
+                            organization = 'OpenRemote'
+                            organizationUrl = 'https://openremote.io'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:git://github.com/openremote/console-android.git'
+                        developerConnection = 'scm:git:ssh://github.com:openremote/console-android.git'
+                        url = 'https://github.com/openremote/console-android/tree/main'
+                    }
+                }
+            }
+        }
+
+        repositories {
+            maven {
+                if (!version.endsWith('-LOCAL')) {
+                    credentials {
+                        username findProperty("publishUsername")
+                        password findProperty("publishPassword")
+                    }
+                }
+                url = version.endsWith('-LOCAL') ? layout.buildDirectory.dir('repo') : version.endsWith('-SNAPSHOT') ? findProperty("snapshotsRepoUrl") : findProperty("releasesRepoUrl")
+            }
+        }
+    }
+
+    signing {
+        def signingKey = findProperty("signingKey")
+        def signingPassword = findProperty("signingPassword")
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications.release
+    }
 }
