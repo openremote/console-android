@@ -22,10 +22,24 @@ android {
         resValue "string", "NOTIFICATION_CHANNEL_ID", applicationId + ".ORAppMessage"
     }
 
+    if (project.hasProperty("keystoreFile")) {
+        signingConfigs {
+            release {
+                keyAlias keystoreKeyAlias
+                keyPassword keystoreKeyPassword
+                storeFile file(keystoreFile)
+                storePassword keystorePassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (project.hasProperty("keystoreFile")) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
@@ -75,7 +89,7 @@ afterEvaluate {
             release(MavenPublication) {
                 from components.release
 
-                artifact source: file('build/outputs/apk/release/app-release-unsigned.apk')
+                artifact source: file('build/outputs/apk/release/app-release.apk')
                 artifact sourcesJar
 
                 group = "io.openremote"
