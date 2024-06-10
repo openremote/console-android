@@ -590,6 +590,10 @@ open class OrMainActivity : Activity() {
                         }
                     }
                 }
+
+                "CLEAR_WEB_HISTORY" -> {
+                    binding.webView.clearHistory()
+                }
             }
         }
 
