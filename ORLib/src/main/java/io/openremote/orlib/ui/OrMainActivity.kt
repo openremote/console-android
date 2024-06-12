@@ -40,7 +40,6 @@ import io.openremote.orlib.service.QrScannerProvider
 import io.openremote.orlib.shared.SharedData.offlineActivity
 import org.json.JSONException
 import org.json.JSONObject
-import java.lang.Exception
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -599,12 +598,8 @@ open class OrMainActivity : Activity() {
         }
 
         private fun handleClearHistoryMessage() {
-            try {
-                binding.webView.post {
-                    binding.webView.clearHistory()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            binding.webView.post {
+                binding.webView.clearHistory()
             }
         }
 
