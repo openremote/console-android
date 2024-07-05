@@ -948,7 +948,6 @@ open class OrMainActivity : Activity() {
             // Double escape quotes (this is needed for browsers to be able to parse the response)
             jsonString = jsonString.replace("\\\"", "\\\\\"")
 
-            LOG.info("notifyClient with message: $jsonString")
             runOnUiThread {
                 binding.webView.evaluateJavascript(
                     String.format(
