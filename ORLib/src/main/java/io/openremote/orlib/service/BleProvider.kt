@@ -369,6 +369,18 @@ class BleProvider(val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
+    fun disconnectFromDevice(bleCallback: BleCallback) {
+        currentGatt?.disconnect()
+        bleCallback.accept(
+            hashMapOf(
+                "action" to "DISCONNECT_FROM_DEVICE",
+                "provider" to "ble",
+                "success" to (currentGatt != null),
+            )
+        )
+    }
+
+    @SuppressLint("MissingPermission")
     fun sendToDevice(characteristicID: String, value: Any, callback: BleCallback) {
         val characteristic =
             deviceCharacteristics.find { it.characteristic.uuid.toString() == characteristicID }?.characteristic
