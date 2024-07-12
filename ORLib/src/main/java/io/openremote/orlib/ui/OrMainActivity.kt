@@ -68,6 +68,7 @@ open class OrMainActivity : Activity() {
     private var progressBar: ProgressBar? = null
     private var webViewIsLoading = false
     private var webViewLoaded = false
+    private var lastConnectivity = false
     private var geofenceProvider: GeofenceProvider? = null
     private var qrScannerProvider: QrScannerProvider? = null
     private var bleProvider: BleProvider? = null
@@ -990,8 +991,9 @@ open class OrMainActivity : Activity() {
 
     private fun onConnectivityChanged(connectivity: Boolean) {
         LOG.info("Connectivity changed: $connectivity")
-        if (connectivity && !webViewIsLoading) {
+        if (connectivity && !webViewIsLoading && !lastConnectivity) {
             reloadWebView()
         }
+        lastConnectivity = connectivity
     }
 }
