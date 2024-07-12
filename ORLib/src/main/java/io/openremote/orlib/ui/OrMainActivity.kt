@@ -928,6 +928,14 @@ open class OrMainActivity : Activity() {
                     })
                 }
 
+                action.equals("DISCONNECT_FROM_DEVICE", ignoreCase = true) -> {
+                    bleProvider?.disconnectFromDevice(object : BleProvider.BleCallback {
+                        override fun accept(responseData: Map<String, Any>) {
+                            notifyClient(responseData)
+                        }
+                    })
+                }
+
                 action.equals("SEND_TO_DEVICE", ignoreCase = true) -> {
                     val attributeId = data.getString("attributeId")
                     val value = data.get("value")
