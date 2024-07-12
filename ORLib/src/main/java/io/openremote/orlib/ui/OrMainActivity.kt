@@ -227,11 +227,10 @@ open class OrMainActivity : Activity() {
                     request: WebResourceRequest,
                     errorResponse: WebResourceResponse
                 ) {
-                    //When initialising Keycloak with an invalid offline refresh token (e.g. wrong nonce because
-                    // server was reinstalled), we detect the failure and then don't show an error view. We clear the stored
-                    // invalid token. The web app will then start a new login.
+                    // When initialising Keycloak with an invalid offline refresh token (e.g. wrong nonce because
+                    // server was reinstalled), we detect the failure and then don't show an error view.
+                    // The JS code will handle the error and show the login screen.
                     if (request.url.lastPathSegment != null && request.url.lastPathSegment == "token" && request.method == "POST" && errorResponse.statusCode == 400) {
-                        storeData(getString(R.string.SHARED_PREF_REFRESH_TOKEN), null)
                         return
                     }
 
