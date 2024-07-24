@@ -37,6 +37,7 @@ import io.openremote.orlib.service.BleProvider
 import io.openremote.orlib.service.ConnectivityChangeReceiver
 import io.openremote.orlib.service.GeofenceProvider
 import io.openremote.orlib.service.QrScannerProvider
+import io.openremote.orlib.service.SecureStorageProvider
 import io.openremote.orlib.shared.SharedData.offlineActivity
 import org.json.JSONException
 import org.json.JSONObject
@@ -72,6 +73,7 @@ open class OrMainActivity : Activity() {
     private var geofenceProvider: GeofenceProvider? = null
     private var qrScannerProvider: QrScannerProvider? = null
     private var bleProvider: BleProvider? = null
+    private var secureStorageProvider: SecureStorageProvider? = null
     private var consoleId: String? = null
     private var connectFailCount: Int = 0
     private var connectFailResetHandler: Handler? = null
@@ -797,26 +799,18 @@ open class OrMainActivity : Activity() {
         @Throws(JSONException::class)
         private fun handleStorageProviderMessage(data: JSONObject) {
             val action = data.getString("action")
+            if (secureStorageProvider == null) {
+                secureStorageProvider = SecureStorageProvider(activity)
+            }
             when {
                 action.equals("PROVIDER_INIT", ignoreCase = true) -> {
-                    val response: MutableMap<String, Any> = HashMap()
-                    response["action"] = "PROVIDER_INIT"
-                    response["provider"] = "storage"
-                    response["version"] = "1.0.0"
-                    response["enabled"] = true
-                    response["requiresPermission"] = false
-                    response["hasPermission"] = true
-                    response["success"] = true
+                    val response = secureStorageProvider!!.initialize()
                     notifyClient(response)
                 }
 
                 action.equals("PROVIDER_ENABLE", ignoreCase = true) -> {
                     // Doesn't require enabling but just in case it gets called lets return a valid response
-                    val response: MutableMap<String, Any> = HashMap()
-                    response["action"] = "PROVIDER_ENABLE"
-                    response["provider"] = "storage"
-                    response["hasPermission"] = true
-                    response["success"] = true
+                    val response = secureStorageProvider!!.enable()
                     notifyClient(response)
                 }
 
@@ -824,7 +818,7 @@ open class OrMainActivity : Activity() {
                     try {
                         val key = data.getString("key")
                         val valueJson = data.getString("value")
-                        storeData(key, valueJson)
+                        secureStorageProvider!!.storeData(key, valueJson)
                     } catch (e: JSONException) {
                         LOG.log(Level.SEVERE, "Failed to store data", e)
                     }
@@ -833,12 +827,7 @@ open class OrMainActivity : Activity() {
                 action.equals("RETRIEVE", ignoreCase = true) -> {
                     try {
                         val key = data.getString("key")
-                        val dataJson = retrieveData(key)
-                        val response: MutableMap<String, Any?> = HashMap()
-                        response["action"] = "RETRIEVE"
-                        response["provider"] = "storage"
-                        response["key"] = key
-                        response["value"] = dataJson
+                        val response = secureStorageProvider!!.retrieveData(key)
                         notifyClient(response)
                     } catch (e: JSONException) {
                         LOG.log(Level.SEVERE, "Failed to retrieve data", e)
@@ -966,26 +955,6 @@ open class OrMainActivity : Activity() {
             }
         } catch (e: JsonProcessingException) {
             e.printStackTrace()
-        }
-    }
-
-    private fun storeData(key: String?, data: String?) {
-        val editor = sharedPreferences.edit()
-        if (data == null) {
-            editor.remove(key)
-        } else {
-            editor.putString(key, data)
-        }
-        editor.apply()
-    }
-
-    private fun retrieveData(key: String?): Any? {
-        val str = sharedPreferences.getString(key, null) ?: return null
-        // Parse data JSON
-        return try {
-            mapper.readTree(str)
-        } catch (e: JsonProcessingException) {
-            str
         }
     }
 
