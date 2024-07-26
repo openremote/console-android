@@ -803,6 +803,17 @@ open class OrMainActivity : Activity() {
                 secureStorageProvider = SecureStorageProvider(activity)
             }
             when {
+                action.equals("PROVIDER_INIT", ignoreCase = true) -> {
+                    val response = secureStorageProvider!!.initialize()
+                    notifyClient(response)
+                }
+
+                action.equals("PROVIDER_ENABLE", ignoreCase = true) -> {
+                    // Doesn't require enabling but just in case it gets called lets return a valid response
+                    val response = secureStorageProvider!!.enable()
+                    notifyClient(response)
+                }
+
                 action.equals("STORE", ignoreCase = true) -> {
                     try {
                         val key = data.getString("key")
