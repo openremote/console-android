@@ -6,6 +6,8 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.preference.PreferenceManager
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -17,6 +19,7 @@ class SecureStorageProvider(val context: Context) {
     private val sharedPreferences: SharedPreferences =
         context.getSharedPreferences("secure_prefs", Context.MODE_PRIVATE)
     private val keyAlias = context.packageName + ".secure_storage_key"
+    private val mapper = jacksonObjectMapper()
 
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
@@ -118,7 +121,7 @@ class SecureStorageProvider(val context: Context) {
             "action" to "RETRIEVE",
             "provider" to "storage",
             "key" to key,
-            "value" to null
+            "value" to null as Any?,
         )
 
         val encryptedData = sharedPreferences.getString(key, null) ?: return result
@@ -132,7 +135,13 @@ class SecureStorageProvider(val context: Context) {
         cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
         val plainData = cipher.doFinal(data).toString(Charsets.UTF_8)
 
-        result["value"] = plainData
+        val value = try {
+            mapper.readTree(plainData)
+        } catch (e: JsonProcessingException) {
+            plainData
+        }
+
+        result["value"] = value
         return result
     }
 }
