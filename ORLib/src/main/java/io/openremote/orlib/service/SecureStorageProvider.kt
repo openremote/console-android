@@ -36,8 +36,7 @@ class SecureStorageProvider(val context: Context) {
             val defaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
             val allEntries = defaultSharedPreferences.all
             for ((key, value) in allEntries) {
-                val encryptedData = encryptData(value as String)
-                storeData(key, encryptedData)
+                storeData(key, value as String?)
                 defaultSharedPreferences.edit().remove(key).apply()
             }
         }

@@ -551,7 +551,7 @@ open class OrMainActivity : Activity() {
             val reader = JSONObject(jsonMessage)
             val messageType = reader.getString("type")
             val data = reader.optJSONObject("data")
-            LOG.info("Received WebApp message: $data")
+            LOG.info("Received WebApp message: $reader")
 
             when (messageType) {
                 "error" -> {
@@ -945,6 +945,7 @@ open class OrMainActivity : Activity() {
     private fun notifyClient(data: Map<String, Any?>?) {
         try {
             var jsonString = mapper.writeValueAsString(data)
+            LOG.info("Sending response to client: $jsonString")
 
             // Double escape quotes (this is needed for browsers to be able to parse the response)
             jsonString = jsonString.replace("\\\"", "\\\\\"")
