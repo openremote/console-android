@@ -815,22 +815,26 @@ open class OrMainActivity : Activity() {
                 }
 
                 action.equals("STORE", ignoreCase = true) -> {
-                    try {
-                        val key = data.getString("key")
-                        val valueJson = data.getString("value")
-                        secureStorageProvider!!.storeData(key, valueJson)
-                    } catch (e: JSONException) {
-                        LOG.log(Level.SEVERE, "Failed to store data", e)
-                    }
+                    val key = data.getString("key")
+                    val valueJson = data.getString("value")
+                    secureStorageProvider!!.storeData(key, valueJson)
                 }
 
                 action.equals("RETRIEVE", ignoreCase = true) -> {
+                    val key = data.getString("key")
                     try {
-                        val key = data.getString("key")
                         val response = secureStorageProvider!!.retrieveData(key)
                         notifyClient(response)
-                    } catch (e: JSONException) {
+                    } catch (e: Exception) {
                         LOG.log(Level.SEVERE, "Failed to retrieve data", e)
+                        notifyClient(
+                            hashMapOf(
+                                "action" to "RETRIEVE",
+                                "provider" to "storage",
+                                "key" to key,
+                                "value" to null
+                            )
+                        )
                     }
                 }
             }
