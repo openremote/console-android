@@ -551,7 +551,7 @@ open class OrMainActivity : Activity() {
             val reader = JSONObject(jsonMessage)
             val messageType = reader.getString("type")
             val data = reader.optJSONObject("data")
-            LOG.info("Received WebApp message: $data")
+            LOG.info("Received WebApp message: $reader")
 
             when (messageType) {
                 "error" -> {
@@ -815,22 +815,26 @@ open class OrMainActivity : Activity() {
                 }
 
                 action.equals("STORE", ignoreCase = true) -> {
-                    try {
-                        val key = data.getString("key")
-                        val valueJson = data.getString("value")
-                        secureStorageProvider!!.storeData(key, valueJson)
-                    } catch (e: JSONException) {
-                        LOG.log(Level.SEVERE, "Failed to store data", e)
-                    }
+                    val key = data.getString("key")
+                    val valueJson = data.getString("value")
+                    secureStorageProvider!!.storeData(key, valueJson)
                 }
 
                 action.equals("RETRIEVE", ignoreCase = true) -> {
+                    val key = data.getString("key")
                     try {
-                        val key = data.getString("key")
                         val response = secureStorageProvider!!.retrieveData(key)
                         notifyClient(response)
-                    } catch (e: JSONException) {
+                    } catch (e: Exception) {
                         LOG.log(Level.SEVERE, "Failed to retrieve data", e)
+                        notifyClient(
+                            hashMapOf(
+                                "action" to "RETRIEVE",
+                                "provider" to "storage",
+                                "key" to key,
+                                "value" to null
+                            )
+                        )
                     }
                 }
             }
@@ -941,6 +945,7 @@ open class OrMainActivity : Activity() {
     private fun notifyClient(data: Map<String, Any?>?) {
         try {
             var jsonString = mapper.writeValueAsString(data)
+            LOG.info("Sending response to client: $jsonString")
 
             // Double escape quotes (this is needed for browsers to be able to parse the response)
             jsonString = jsonString.replace("\\\"", "\\\\\"")
