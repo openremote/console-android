@@ -71,6 +71,8 @@ class BleProvider(val context: Context) {
         }
     }
     private var sendToDeviceCallback: BleCallback? = null
+    private var retryCount = 0
+    private val maxRetries = 2
 
     fun initialize(): Map<String, Any> {
         val sharedPreferences =
@@ -159,6 +161,75 @@ class BleProvider(val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun connectToDevice(address: String, bleCallback: BleCallback) {
+        retryCount = 0
+        attemptConnection(address, bleCallback)
+    }
+
+    @SuppressLint("MissingPermission")
+    fun disconnectFromDevice(bleCallback: BleCallback) {
+        currentGatt?.disconnect()
+        bleCallback.accept(
+            hashMapOf(
+                "action" to "DISCONNECT_FROM_DEVICE",
+                "provider" to "ble",
+                "success" to (currentGatt != null),
+            )
+        )
+    }
+
+    @SuppressLint("MissingPermission")
+    fun sendToDevice(characteristicID: String, value: Any, callback: BleCallback) {
+        val characteristic =
+            deviceCharacteristics.find { it.characteristic.uuid.toString() == characteristicID }?.characteristic
+        if (characteristic == null) {
+            callback.accept(
+                hashMapOf(
+                    "action" to "SEND_TO_DEVICE",
+                    "provider" to "ble",
+                    "success" to false,
+                    "error" to "Characteristic $characteristicID not found"
+                )
+            )
+            return
+        }
+        val writeType = when {
+            characteristic.isSignedWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_SIGNED
+            characteristic.isWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            characteristic.isWritableWithoutResponse() -> {
+                BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            }
+
+            else -> {
+                callback.accept(
+                    hashMapOf(
+                        "action" to "SEND_TO_DEVICE",
+                        "provider" to "ble",
+                        "success" to false,
+                        "error" to "Characteristic $characteristicID not found"
+                    )
+                )
+                return
+            }
+        }
+
+        val jsonString = value.toString()
+        val payload = jsonString.toByteArray(Charsets.UTF_8)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            currentGatt?.writeCharacteristic(characteristic, payload, writeType)
+                ?: error("Not connected to a BLE device!")
+        } else {
+            currentGatt?.let { gatt ->
+                characteristic.writeType = writeType
+                characteristic.value = payload
+                gatt.writeCharacteristic(characteristic)
+            } ?: error("Not connected to a BLE device!")
+        }
+        sendToDeviceCallback = callback
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun attemptConnection(address: String, bleCallback: BleCallback) {
         currentGatt?.disconnect()
         devices.find { it.address == address }?.let { device ->
             device.connectGatt(context, false, object : BluetoothGattCallback() {
@@ -192,6 +263,30 @@ class BleProvider(val context: Context) {
                                     "success" to false,
                                 )
                             )
+                        }
+                    } else if ((status == 8 && newState == 0) || (status == 133 && newState == 0)) {
+                        if (retryCount < maxRetries) {
+                            retryCount++
+                            Log.w(
+                                "BluetoothGattCallback",
+                                "Retrying connection to $deviceAddress ($retryCount/$maxRetries)"
+                            )
+                            gatt.disconnect()
+                            gatt.close()
+                            attemptConnection(address, bleCallback)
+                        } else {
+                            bleCallback.accept(
+                                hashMapOf(
+                                    "action" to "CONNECT_TO_DEVICE",
+                                    "provider" to "ble",
+                                    "success" to false,
+                                )
+                            )
+                            Log.w(
+                                "BluetoothGattCallback",
+                                "Error $status encountered for $deviceAddress! Disconnecting..."
+                            )
+                            gatt.close()
                         }
                     } else {
                         bleCallback.accept(
@@ -368,68 +463,6 @@ class BleProvider(val context: Context) {
         }
     }
 
-    @SuppressLint("MissingPermission")
-    fun disconnectFromDevice(bleCallback: BleCallback) {
-        currentGatt?.disconnect()
-        bleCallback.accept(
-            hashMapOf(
-                "action" to "DISCONNECT_FROM_DEVICE",
-                "provider" to "ble",
-                "success" to (currentGatt != null),
-            )
-        )
-    }
-
-    @SuppressLint("MissingPermission")
-    fun sendToDevice(characteristicID: String, value: Any, callback: BleCallback) {
-        val characteristic =
-            deviceCharacteristics.find { it.characteristic.uuid.toString() == characteristicID }?.characteristic
-        if (characteristic == null) {
-            callback.accept(
-                hashMapOf(
-                    "action" to "SEND_TO_DEVICE",
-                    "provider" to "ble",
-                    "success" to false,
-                    "error" to "Characteristic $characteristicID not found"
-                )
-            )
-            return
-        }
-        val writeType = when {
-            characteristic.isSignedWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_SIGNED
-            characteristic.isWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            characteristic.isWritableWithoutResponse() -> {
-                BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-            }
-
-            else -> {
-                callback.accept(
-                    hashMapOf(
-                        "action" to "SEND_TO_DEVICE",
-                        "provider" to "ble",
-                        "success" to false,
-                        "error" to "Characteristic $characteristicID not found"
-                    )
-                )
-                return
-            }
-        }
-
-        val jsonString = value.toString()
-        val payload = jsonString.toByteArray(Charsets.UTF_8)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            currentGatt?.writeCharacteristic(characteristic, payload, writeType)
-                ?: error("Not connected to a BLE device!")
-        } else {
-            currentGatt?.let { gatt ->
-                characteristic.writeType = writeType
-                characteristic.value = payload
-                gatt.writeCharacteristic(characteristic)
-            } ?: error("Not connected to a BLE device!")
-        }
-        sendToDeviceCallback = callback
-    }
 
     private fun requestPermissions(activity: Activity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
