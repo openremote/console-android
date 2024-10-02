@@ -18,7 +18,6 @@ import io.openremote.orlib.R
 import io.openremote.orlib.models.ORAlertAction
 import io.openremote.orlib.models.ORAlertButton
 import io.openremote.orlib.ui.NotificationActivity
-import io.openremote.orlib.ui.OrMainActivity
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -230,13 +229,13 @@ class ORFirebaseMessagingService : com.google.firebase.messaging.FirebaseMessagi
                 this,
                 0,
                 actionIntent,
-                PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE)
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         } else {
             PendingIntent.getService(
                 this,
                 0,
                 actionIntent,
-                PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         }
     }

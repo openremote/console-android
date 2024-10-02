@@ -170,7 +170,7 @@ open class OrMainActivity : Activity() {
             IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        if (!webViewLoaded) {
+        if (!webViewLoaded && !webViewIsLoading) {
             reloadWebView()
         }
     }
@@ -688,37 +688,39 @@ open class OrMainActivity : Activity() {
                                     Manifest.permission.POST_NOTIFICATIONS
                                 )
                             ) {
-                                AlertDialog.Builder(this@OrMainActivity)
-                                    .setTitle(R.string.push_notification_alert_title)
-                                    .setMessage(R.string.push_notification_alert_message)
-                                    .setIcon(R.drawable.ic_notification)
-                                    .setCancelable(false)
-                                    .setPositiveButton(
-                                        R.string.yes
-                                    ) { dialog, which ->
-                                        requestPermissions(
-                                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                                            pushResponseCode
-                                        )
+                                runOnUiThread {
+                                    AlertDialog.Builder(this@OrMainActivity)
+                                        .setTitle(R.string.push_notification_alert_title)
+                                        .setMessage(R.string.push_notification_alert_message)
+                                        .setIcon(R.drawable.ic_notification)
+                                        .setCancelable(false)
+                                        .setPositiveButton(
+                                            R.string.yes
+                                        ) { dialog, which ->
+                                            requestPermissions(
+                                                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                                pushResponseCode
+                                            )
+                                        }
+                                        .setNegativeButton(
+                                            R.string.no
+                                        ) { dialog, which ->
+                                            sharedPreferences.edit()
+                                                .putBoolean(
+                                                    ORConstants.PUSH_PROVIDER_DISABLED_KEY,
+                                                    true
+                                                )
+                                                .apply()
+                                            notifyClient(
+                                                hashMapOf(
+                                                    "action" to "PROVIDER_ENABLE",
+                                                    "provider" to "push",
+                                                    "hasPermission" to false,
+                                                    "success" to true
+                                                )
+                                            )
+                                        }.show()
                                     }
-                                    .setNegativeButton(
-                                        R.string.no
-                                    ) { dialog, which ->
-                                        sharedPreferences.edit()
-                                            .putBoolean(
-                                                ORConstants.PUSH_PROVIDER_DISABLED_KEY,
-                                                true
-                                            )
-                                            .apply()
-                                        notifyClient(
-                                            hashMapOf(
-                                                "action" to "PROVIDER_ENABLE",
-                                                "provider" to "push",
-                                                "hasPermission" to false,
-                                                "success" to true
-                                            )
-                                        )
-                                    }.show()
                             } else {
                                 requestPermissions(
                                     arrayOf(Manifest.permission.POST_NOTIFICATIONS),
