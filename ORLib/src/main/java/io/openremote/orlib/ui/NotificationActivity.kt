@@ -79,6 +79,7 @@ class NotificationActivity : AppCompatActivity() {
                     startActivity(launchIntent)
                 }
             }
+            finish()
         }
     }
 }
