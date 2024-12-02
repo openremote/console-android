@@ -6,8 +6,6 @@ plugins {
     id 'signing'
 }
 
-version = hasProperty("orlibVersion") ? orlibVersion : "1.2.0-SNAPSHOT"
-
 android {
     namespace 'io.openremote.orlib'
 
@@ -129,7 +127,9 @@ afterEvaluate {
     signing {
         def signingKey = findProperty("signingKey")
         def signingPassword = findProperty("signingPassword")
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign publishing.publications.release
+        if (signingKey && signingPassword) {
+            useInMemoryPgpKeys(signingKey, signingPassword)
+            sign publishing.publications
+        }
     }
 }

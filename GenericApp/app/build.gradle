@@ -6,8 +6,6 @@ plugins {
     id 'signing'
 }
 
-version = hasProperty("appVersion") ? appVersion : "1.2.0-SNAPSHOT"
-
 android {
     defaultConfig {
         applicationId "io.openremote.app"
@@ -139,9 +137,12 @@ afterEvaluate {
     signing {
         def signingKey = findProperty("signingKey")
         def signingPassword = findProperty("signingPassword")
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign publishing.publications.release
+        if (signingKey && signingPassword) {
+            useInMemoryPgpKeys(signingKey, signingPassword)
+            sign publishing.publications
+            signReleasePublication.dependsOn(packageRelease)
+        }
     }
 
-    signReleasePublication.dependsOn(packageRelease)
+    publishReleasePublicationToMavenLocal.dependsOn(packageRelease)
 }
