@@ -208,7 +208,7 @@ class ORFirebaseMessagingService : com.google.firebase.messaging.FirebaseMessagi
     private fun createActionIntent(
         notificationId: Long?,
         acknowledgement: String?,
-        oRAlertAction: ORAlertAction?
+        orAlertAction: ORAlertAction?
     ): PendingIntent {
         val actionIntent = when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->Intent(this, NotificationActivity::class.java)
@@ -217,12 +217,12 @@ class ORFirebaseMessagingService : com.google.firebase.messaging.FirebaseMessagi
         actionIntent.putExtra("notificationId", notificationId)
         actionIntent.putExtra("acknowledgement", acknowledgement)
         actionIntent.action = System.currentTimeMillis().toString()
-        if (oRAlertAction?.url != null && oRAlertAction.url.isNotEmpty()) {
-            actionIntent.putExtra("appUrl", oRAlertAction.url)
-            actionIntent.putExtra("httpMethod", oRAlertAction.httpMethod)
-            actionIntent.putExtra("silent", oRAlertAction.silent)
-            actionIntent.putExtra("openInBrowser", oRAlertAction.openInBrowser)
-            actionIntent.putExtra("data", ObjectMapper().writeValueAsString(oRAlertAction.data))
+        if (orAlertAction?.url != null && orAlertAction.url.isNotEmpty()) {
+            actionIntent.putExtra("appUrl", orAlertAction.url)
+            actionIntent.putExtra("httpMethod", orAlertAction.httpMethod)
+            actionIntent.putExtra("silent", orAlertAction.silent)
+            actionIntent.putExtra("openInBrowser", orAlertAction.openInBrowser)
+            actionIntent.putExtra("data", ObjectMapper().writeValueAsString(orAlertAction.data))
         }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             PendingIntent.getActivity(
