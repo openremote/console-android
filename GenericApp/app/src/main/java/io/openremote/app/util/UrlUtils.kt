@@ -13,7 +13,7 @@ object UrlUtils {
 
     fun endsWithTld(url: String): Boolean {
         val tldPattern = Regex(
-            ".*\\.[a-z]{2,6}$"
+            "(?:[a-zA-Z]*\\.)+([a-zA-Z]+)(?:\\/.*)?"
         )
         return tldPattern.matches(url)
     }
