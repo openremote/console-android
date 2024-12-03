@@ -36,9 +36,9 @@ class HostSelectionFragment : Fragment() {
 
         binding.connectButton.setOnClickListener {
             if (!binding.hostInput.text.isNullOrBlank()) {
-                connectToHost(binding.hostInput.text.toString())
+                connectToHost(binding.hostInput.text.toString().trim())
             }
-            parentActivity.host = binding.hostInput.text.toString()
+            parentActivity.host = binding.hostInput.text.toString().trim()
         }
 
         binding.backButton.setOnClickListener {

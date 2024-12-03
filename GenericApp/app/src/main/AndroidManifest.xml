@@ -49,6 +49,11 @@
             android:name="io.openremote.orlib.ui.OrPrivacyPolicyActivity"
             android:screenOrientation="portrait" />
         <activity
+            android:name="io.openremote.orlib.ui.NotificationActivity"
+            android:exported="true"
+            android:configChanges="uiMode"
+            android:theme="@style/Theme.Transparent" />
+        <activity
             android:name=".ui.ProjectWizardActivity"
             android:exported="false"
             android:screenOrientation="portrait" />

@@ -97,7 +97,7 @@ class AppSelectionFragment : Fragment() {
         if (showAppTextInput) {
             binding.appInputLayout.visibility = View.VISIBLE
             binding.appInput.doOnTextChanged { text, start, before, count ->
-                parentActivity.app = text.toString()
+                parentActivity.app = text.toString().trim()
             }
         } else {
             if (appList != null) {

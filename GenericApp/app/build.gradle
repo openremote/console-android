@@ -6,10 +6,10 @@ android {
     defaultConfig {
         applicationId "io.openremote.app"
         minSdkVersion 25
-        compileSdk 34
-        targetSdkVersion 34
-        versionCode 42
-        versionName "1.1.1"
+        compileSdk 35
+        targetSdkVersion 35
+        versionCode 44
+        versionName "1.1.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -41,13 +41,13 @@ android {
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation "com.google.android.gms:play-services-location:21.3.0"
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1"
-    implementation platform('com.google.firebase:firebase-bom:33.1.2')
+    implementation platform('com.google.firebase:firebase-bom:33.6.0')
     implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'com.google.android.material:material:1.12.0'
     implementation project(':ORLib')
