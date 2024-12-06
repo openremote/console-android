@@ -42,7 +42,7 @@ class NotificationActivity : AppCompatActivity() {
                 acknowledgement
             )
         }
-        val appUrl = intent.getStringExtra("appUrl")
+        var appUrl = intent.getStringExtra("appUrl")
         if (!appUrl.isNullOrBlank()) {
             val openInBrowser = intent.getBooleanExtra("openInBrowser", false)
             val silent = intent.getBooleanExtra("silent", false)
@@ -52,6 +52,9 @@ class NotificationActivity : AppCompatActivity() {
 
             when {
                 openInBrowser -> {
+                    if (!appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+                        appUrl = "http://$appUrl"
+                    }
                     // Don't load the app just send straight to browser
                     val i = Intent(Intent.ACTION_VIEW)
                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -60,6 +63,9 @@ class NotificationActivity : AppCompatActivity() {
                 }
 
                 silent -> {
+                    if (!appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+                        appUrl = "http://$appUrl"
+                    }
                     // Do silent HTTP request
                     notificationResource!!.executeRequest(httpMethod!!, appUrl, data)
                 }
@@ -79,7 +85,7 @@ class NotificationActivity : AppCompatActivity() {
                     startActivity(launchIntent)
                 }
             }
-            finish()
         }
+        finish()
     }
 }

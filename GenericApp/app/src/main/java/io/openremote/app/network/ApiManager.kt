@@ -55,7 +55,7 @@ class ApiManager(private val baseUrl: String) {
         }
 
         val url = URL(builder.build().toString())
-        with(url.openConnection() as HttpsURLConnection) {
+        with(url.openConnection() as HttpURLConnection) {
             requestMethod = method.toString()
             setRequestProperty("Accept", "application/json")
 

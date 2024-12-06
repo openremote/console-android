@@ -69,7 +69,7 @@ class RealmSelectionFragment : Fragment() {
         if (showRealmTextInput) {
             binding.realmInputLayout.visibility = View.VISIBLE
             binding.realmInput.doOnTextChanged { text, start, before, count ->
-                parentActivity.realm = text.toString()
+                parentActivity.realm = text.toString().trim()
             }
         } else {
             if (realmList != null) {
@@ -99,7 +99,7 @@ class RealmSelectionFragment : Fragment() {
             } else {
                 binding.realmInputLayout.visibility = View.VISIBLE
                 binding.realmInput.doOnTextChanged { text, start, before, count ->
-                    parentActivity.realm = text.toString()
+                    parentActivity.realm = text.toString().trim()
                 }
             }
         }
