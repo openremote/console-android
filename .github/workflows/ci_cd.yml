@@ -62,7 +62,7 @@ jobs:
         if: ${{ steps.is_main_repo.outputs.value && github.event_name != 'pull_request' }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > keystore
-          command="gradle assemble publish"
+          command="gradle assemble publishToSonatype closeSonatypeStagingRepository"
           command="$command -PsigningKey=$MAVEN_SIGNING_KEY -PsigningPassword=$MAVEN_SIGNING_PASSWORD -PpublishUsername=$MAVEN_USERNAME -PpublishPassword=$MAVEN_PASSWORD"
           command="$command -PkeystoreKeyAlias=$KEYSTORE_KEY_ALIAS -PkeystoreKeyPassword=$KEYSTORE_KEY_PASSWORD -PkeystoreFile=$PWD/keystore -PkeystorePassword=$KEYSTORE_PASSWORD"
           $command
