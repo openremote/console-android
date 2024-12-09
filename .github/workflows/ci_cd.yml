@@ -8,6 +8,18 @@ on:
     tags-ignore:
       - '*.*'
 
+  # PR
+  pull_request:
+    branches:
+      - 'main'
+
+  # When a release is published
+  release:
+    types: [published]
+
+  # Manual trigger
+  workflow_dispatch:
+
 jobs:
 
   build:
@@ -32,15 +44,46 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Run build
+      - name: Check if main repo
+        id: is_main_repo
         run: |
-          cd GenericApp
-          gradle build
+          if [ $REPO_NAME == 'openremote/console-android' ]; then
+            echo "value=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          REPO_NAME: ${{ github.repository }}
 
-      - name: Upload APKs
+      - name: Run assemble
+        if: ${{ !steps.is_main_repo.outputs.value || github.event_name == 'pull_request' }}
+        run: |
+          gradle assemble
+
+      - name: Run assemble and publish
+        if: ${{ steps.is_main_repo.outputs.value && github.event_name != 'pull_request' }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > keystore
+          command="gradle assemble publishToSonatype closeSonatypeStagingRepository"
+          command="$command -PsigningKey=$MAVEN_SIGNING_KEY -PsigningPassword=$MAVEN_SIGNING_PASSWORD -PpublishUsername=$MAVEN_USERNAME -PpublishPassword=$MAVEN_PASSWORD"
+          command="$command -PkeystoreKeyAlias=$KEYSTORE_KEY_ALIAS -PkeystoreKeyPassword=$KEYSTORE_KEY_PASSWORD -PkeystoreFile=$PWD/keystore -PkeystorePassword=$KEYSTORE_PASSWORD"
+          $command
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MAVEN_SIGNING_KEY: ${{ secrets._TEMP_MAVEN_SIGNING_KEY || secrets.MAVEN_SIGNING_KEY }}
+          MAVEN_SIGNING_PASSWORD: ${{ secrets._TEMP_MAVEN_SIGNING_PASSWORD || secrets.MAVEN_SIGNING_PASSWORD }}
+          MAVEN_USERNAME: ${{ secrets._TEMP_MAVEN_USERNAME || secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets._TEMP_MAVEN_PASSWORD || secrets.MAVEN_PASSWORD }}
+          MAVEN_TAG: ${{ github.ref_name }}
+          KEYSTORE_BASE64: |
+            ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.ANDROID_KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_KEY_PASSWORD }}
+
+      - name: Upload build outputs
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: apks
+          name: build-outputs
           path: |
-            **/*.apk
+            **/build/outputs/**/*.aar
+            **/build/outputs/**/*.apk
