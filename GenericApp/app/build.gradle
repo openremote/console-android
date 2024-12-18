@@ -1,6 +1,10 @@
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'com.google.gms.google-services'
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'com.google.gms.google-services'
+    id 'maven-publish'
+    id 'signing'
+}
 
 android {
     defaultConfig {
@@ -9,18 +13,31 @@ android {
         compileSdk 35
         targetSdkVersion 35
         versionCode 44
-        versionName "1.1.2"
+        versionName version
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         resValue "string", "NOTIFICATION_CHANNEL_ID", applicationId + ".ORAppMessage"
     }
 
+    if (project.hasProperty("keystoreFile")) {
+        signingConfigs {
+            release {
+                keyAlias keystoreKeyAlias
+                keyPassword keystoreKeyPassword
+                storeFile file(keystoreFile)
+                storePassword keystorePassword
+            }
+        }
+    }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (project.hasProperty("keystoreFile")) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
@@ -36,7 +53,13 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+
     namespace 'io.openremote.app'
+
+    publishing {
+        singleVariant('release') {
+        }
+    }
 }
 
 dependencies {
@@ -51,4 +74,75 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging-ktx'
     implementation 'com.google.android.material:material:1.12.0'
     implementation project(':ORLib')
+}
+
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    archiveClassifier = 'sources'
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+
+                artifact source: file('build/outputs/apk/release/app-release.apk')
+                artifact sourcesJar
+
+                group = "io.openremote"
+                artifactId = "app"
+
+                pom {
+                    name = 'OpenRemote Android Console'
+                    description = 'Provides the Android OpenRemote Console Application'
+                    url = 'https://github.com/openremote/console-android'
+                    licenses {
+                        license {
+                            name = 'GNU Affero General Public License v3.0'
+                            url = 'https://www.gnu.org/licenses/agpl-3.0.en.html'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = 'developers'
+                            name = 'Developers'
+                            email = 'developers@openremote.io'
+                            organization = 'OpenRemote'
+                            organizationUrl = 'https://openremote.io'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:git://github.com/openremote/console-android.git'
+                        developerConnection = 'scm:git:ssh://github.com:openremote/console-android.git'
+                        url = 'https://github.com/openremote/console-android/tree/main'
+                    }
+                }
+            }
+        }
+
+        repositories {
+            maven {
+                if (!version.endsWith('-LOCAL')) {
+                    credentials {
+                        username findProperty("publishUsername")
+                        password findProperty("publishPassword")
+                    }
+                }
+                url = version.endsWith('-LOCAL') ? layout.buildDirectory.dir('repo') : version.endsWith('-SNAPSHOT') ? findProperty("snapshotsRepoUrl") : findProperty("releasesRepoUrl")
+            }
+        }
+    }
+
+    signing {
+        def signingKey = findProperty("signingKey")
+        def signingPassword = findProperty("signingPassword")
+        if (signingKey && signingPassword) {
+            useInMemoryPgpKeys(signingKey, signingPassword)
+            sign publishing.publications
+            signReleasePublication.dependsOn(packageRelease)
+        }
+    }
+
+    publishReleasePublicationToMavenLocal.dependsOn(packageRelease)
 }
