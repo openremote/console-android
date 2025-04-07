@@ -198,7 +198,8 @@ class ESPProvisionProvider(val context: Context) {
     }
 
     fun disconnectFromDevice() {
-        // TODO
+        wifiProvisioner?.stopWifiScan()
+        deviceConnection?.disconnectFromDevice()
     }
 
     fun exitProvisioning() {

@@ -6,7 +6,9 @@ import androidx.annotation.RequiresPermission
 import com.espressif.provisioning.DeviceConnectionEvent
 import com.espressif.provisioning.ESPConstants
 import com.espressif.provisioning.ESPDevice
+import io.openremote.orlib.service.ESPProviderErrorCode
 import io.openremote.orlib.service.ESPProvisionProvider
+import io.openremote.orlib.service.ESPProvisionProviderActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -48,7 +50,10 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
             espDevice?.connectBLEDevice(dev.device, dev.serviceUuid)
 
         }
-// TODO send status message back
+    }
+
+    fun disconnectFromDevice() {
+        espDevice?.disconnectDevice()
     }
 
     fun exitProvisioning() {
@@ -78,33 +83,36 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
 
                 configChannel = ORConfigChannel() // TODO: should implement / pass device
 
-
-                callbackChannel?.sendMessage("CONNECT_TO_DEVICE", mapOf(
-                    "id" to (deviceId?.toString() ?: ""),
-                    "status" to "connected"))
-                // TODO: proper enum for status
-            }
-/*
-            ESPConstants.EVENT_DEVICE_DISCONNECTED -> if (espDevice != null && espDevice!!.getTransportType() == ESPConstants.TransportType.TRANSPORT_BLE) {
-                Toast.makeText(this@AddDeviceActivity, "Device disconnected", Toast.LENGTH_LONG)
-                    .show()
-                finish()
-            } else {
-                if (!isFinishing()) {
-                    askForManualDeviceConnection()
-                }
+                sendConnectToDeviceStatus(ESPProviderConnectToDeviceStatus.CONNECTED.value)
             }
 
-            ESPConstants.EVENT_DEVICE_CONNECTION_FAILED -> if (espDevice != null && espDevice!!.getTransportType() == ESPConstants.TransportType.TRANSPORT_BLE) {
-                alertForDeviceNotSupported("Failed to connect with device")
-            } else {
-                if (!isFinishing()) {
-                    askForManualDeviceConnection()
-                }
-            }*/
+            ESPConstants.EVENT_DEVICE_DISCONNECTED -> {
+                bleStatus = BLEStatus.DISCONNECTED
+                configChannel = null
+                sendConnectToDeviceStatus(ESPProviderConnectToDeviceStatus.DISCONNECTED.value)
+            }
+
+            ESPConstants.EVENT_DEVICE_CONNECTION_FAILED -> {
+                bleStatus = BLEStatus.DISCONNECTED
+
+                // TODO: can I get some error details ?
+                sendConnectToDeviceStatus(ESPProviderConnectToDeviceStatus.CONNECTION_ERROR.value)
+            }
         }
     }
 
+    private fun sendConnectToDeviceStatus(status: String, error: ESPProviderErrorCode? = null, errorMessage: String? = null) {
+        val data = mutableMapOf<String, Any>("id" to (deviceId?.toString() ?: ""), "status" to status)
+
+        error?.let {
+            data["errorCode"] = error.code
+        }
+        errorMessage?.let {
+            data["errorMessage"] = it
+        }
+
+        callbackChannel?.sendMessage(ESPProvisionProviderActions.CONNECT_TO_DEVICE, data)
+    }
 
     val espDevice: ESPDevice?
         get() = deviceRegistry.provisionManager?.espDevice
@@ -112,6 +120,13 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
     val isConnected: Boolean
         get() = bleStatus == BLEStatus.CONNECTED && espDevice != null && configChannel != null
 
+    enum class ESPProviderConnectToDeviceStatus(val value: String) {
+        CONNECTED("connected"),
+        DISCONNECTED("disconnected"),
+        CONNECTION_ERROR("connectionError");
+
+        override fun toString(): String = value
+    }
     enum class BLEStatus {
         CONNECTING,
         CONNECTED,
