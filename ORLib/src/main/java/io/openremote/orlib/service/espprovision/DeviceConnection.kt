@@ -1,6 +1,7 @@
 package io.openremote.orlib.service.espprovision
 
 import android.Manifest
+import android.text.TextUtils
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.espressif.provisioning.DeviceConnectionEvent
@@ -12,13 +13,22 @@ import io.openremote.orlib.service.ESPProvisionProviderActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import org.json.JSONException
+import org.json.JSONObject
 import java.util.UUID
 
 class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: CallbackChannel? = null) {
 
+    companion object {
+        private const val SEC_TYPE_0: Int = 0
+        private const val SEC_TYPE_1: Int = 1
+        private const val SEC_TYPE_2: Int = 2
+
+    }
     init {
         EventBus.getDefault().register(this)
     }
@@ -63,11 +73,72 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         // Is IO OK ?
         CoroutineScope(Dispatchers.IO).launch {
             try {
-//                configChannel?.exitProvisioning()
+                configChannel?.exitProvisioning()
             } catch (e: Exception) {
                 // Handle error (log or show UI feedback)
             }
         }
+    }
+
+    fun getDeviceInfo(): DeviceInfo {
+        // TODO: should check if connected
+        // TODO: should not block
+        return runBlocking {
+            configChannel!!.getDeviceInfo()
+        }
+    }
+
+    suspend fun sendOpenRemoteConfig(
+        mqttBrokerUrl: String,
+        mqttUser: String,
+        mqttPassword: String,
+        assetId: String
+    ) {
+/*        if (!isConnected) {
+            throw ESPProviderException(
+                errorCode = ESPProviderErrorCode.NOT_CONNECTED,
+                errorMessage = "No connection established to device"
+            )
+        }*/
+        try {
+            configChannel?.sendOpenRemoteConfig(
+                mqttBrokerUrl = mqttBrokerUrl,
+                mqttUser = mqttUser,
+                mqttPassword = mqttPassword,
+                assetId = assetId
+            )
+        } catch (e: Exception) {
+            /*
+            throw ESPProviderException(
+                errorCode = ESPProviderErrorCode.COMMUNICATION_ERROR,
+                errorMessage = e.localizedMessage ?: "Unknown error"
+            )
+
+             */
+        }
+    }
+
+    suspend fun getBackendConnectionStatus(): BackendConnectionStatus {
+        /*
+        if (!isConnected) {
+            throw ESPProviderException(
+                errorCode = ESPProviderErrorCode.NOT_CONNECTED,
+                errorMessage = "No connection established to device"
+            )
+        }*/
+        return try {
+            configChannel?.getBackendConnectionStatus()
+                ?: BackendConnectionStatus.DISCONNECTED /*throw ESPProviderException(
+                        errorCode = ESPProviderErrorCode.COMMUNICATION_ERROR,
+                        errorMessage = "Channel returned null status"
+                    )*/
+        } catch (e: Exception) {
+            /*
+                throw ESPProviderException(
+                    errorCode = ESPProviderErrorCode.COMMUNICATION_ERROR,
+                    errorMessage = e.localizedMessage ?: "Unknown error"
+                )*/
+        } as BackendConnectionStatus
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -76,12 +147,12 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         when (event.getEventType()) {
             ESPConstants.EVENT_DEVICE_CONNECTED -> {
                 Log.d(ESPProvisionProvider.TAG, "Device Connected Event Received")
-//                setSecurityTypeFromVersionInfo() // TODO: do we need this ?
-
-
                 bleStatus = BLEStatus.CONNECTED
 
-                configChannel = ORConfigChannel() // TODO: should implement / pass device
+                espDevice?.let { device ->
+                    setSecurityTypeFromVersionInfo(device)
+                    configChannel = ORConfigChannel(device)
+                }
 
                 sendConnectToDeviceStatus(ESPProviderConnectToDeviceStatus.CONNECTED.value)
             }
@@ -112,6 +183,47 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         }
 
         callbackChannel?.sendMessage(ESPProvisionProviderActions.CONNECT_TO_DEVICE, data)
+    }
+
+    fun setSecurityTypeFromVersionInfo(device: ESPDevice) {
+        val protoVerStr: String = device.getVersionInfo()
+
+        try {
+            val jsonObject = JSONObject(protoVerStr)
+            val provInfo = jsonObject.getJSONObject("prov")
+
+            if (provInfo != null) {
+                if (provInfo.has("sec_ver")) {
+                    val serVer = provInfo.optInt("sec_ver")
+                    Log.d(ESPProvisionProvider.TAG, "Security Version : " + serVer)
+
+                    when (serVer) {
+                        SEC_TYPE_0 -> {
+                            device.setSecurityType(ESPConstants.SecurityType.SECURITY_0)
+                        }
+
+                        SEC_TYPE_1 -> {
+                            device.setSecurityType(ESPConstants.SecurityType.SECURITY_1)
+                        }
+
+                        SEC_TYPE_2 -> {
+                            device.setSecurityType(ESPConstants.SecurityType.SECURITY_2)
+                        }
+
+                        else -> {
+                            device.setSecurityType(ESPConstants.SecurityType.SECURITY_2)
+                        }
+                    }
+                } else {
+                    device.setSecurityType(ESPConstants.SecurityType.SECURITY_1)
+                }
+            } else {
+                Log.e(ESPProvisionProvider.TAG, "proto-ver info is not available.")
+            }
+        } catch (e: JSONException) {
+            e.printStackTrace()
+            Log.d(ESPProvisionProvider.TAG, "Capabilities JSON not available.")
+        }
     }
 
     val espDevice: ESPDevice?

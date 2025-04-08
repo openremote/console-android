@@ -67,8 +67,15 @@ dependencies {
     implementation 'com.github.espressif:esp-idf-provisioning-android:lib-2.2.3'
     implementation 'org.greenrobot:eventbus:3.3.1'
 
+    implementation 'com.google.protobuf:protobuf-javalite:4.30.2'
+    implementation('com.google.protobuf:protobuf-kotlin:4.30.2') {
+        exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    }
+
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    implementation 'com.github.iammohdzaki:Password-Generator:0.6'
 }
 
 

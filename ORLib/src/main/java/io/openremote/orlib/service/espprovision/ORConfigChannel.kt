@@ -2,6 +2,8 @@ package io.openremote.orlib.service.espprovision
 
 import com.espressif.provisioning.ESPDevice
 import com.espressif.provisioning.listeners.ResponseListener
+import io.openremote.orlib.service.espprovision.ORConfigChannelProtocol.Request
+import io.openremote.orlib.service.espprovision.ORConfigChannelProtocol.Response
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resumeWithException
 
@@ -21,11 +23,8 @@ sealed class ORConfigChannelError(message: String) : Exception(message) {
     object GenericError : ORConfigChannelError("Generic error")
 }
 
-// TODO: see RequestKt and ResponseKt
+class ORConfigChannel(private val device: ESPDevice) {
 
-
-class ORConfigChannel(/*private val device: ESPDevice*/) {
-/*
     private var messageId = 0
 
     suspend fun getDeviceInfo(): DeviceInfo {
@@ -121,6 +120,4 @@ class ORConfigChannel(/*private val device: ESPDevice*/) {
 
         })
     }
-
- */
 }

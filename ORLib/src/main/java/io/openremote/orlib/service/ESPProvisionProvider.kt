@@ -16,10 +16,15 @@ import io.openremote.orlib.R
 import io.openremote.orlib.service.BleProvider.BleCallback
 import io.openremote.orlib.service.BleProvider.Companion.BLUETOOTH_PERMISSION_REQUEST_CODE
 import io.openremote.orlib.service.BleProvider.Companion.ENABLE_BLUETOOTH_REQUEST_CODE
+import io.openremote.orlib.service.espprovision.BatteryProvision
 import io.openremote.orlib.service.espprovision.CallbackChannel
 import io.openremote.orlib.service.espprovision.DeviceConnection
 import io.openremote.orlib.service.espprovision.DeviceRegistry
 import io.openremote.orlib.service.espprovision.WifiProvisioner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.net.URL
 
 object ESPProvisionProviderActions {
     const val PROVIDER_INIT = "PROVIDER_INIT"
@@ -35,7 +40,7 @@ object ESPProvisionProviderActions {
     const val EXIT_PROVISIONING = "EXIT_PROVISIONING"
 }
 
-class ESPProvisionProvider(val context: Context) {
+class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://localhost:8080/api/master")) {
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     val deviceRegistry: DeviceRegistry
     var deviceConnection: DeviceConnection? = null
@@ -239,6 +244,11 @@ class ESPProvisionProvider(val context: Context) {
 
     fun provisionDevice(userToken: String) {
         // TODO
+
+        val batteryProvision = BatteryProvision(deviceConnection, deviceRegistry.callbackChannel, apiURL)
+        CoroutineScope(Dispatchers.Main).launch {  // TODO: what's the appropriate dispatcher ? and should this be here or further down the call chain ?
+            batteryProvision.provision(userToken)
+        }
     }
 
     private fun requestPermissions(activity: Activity) {

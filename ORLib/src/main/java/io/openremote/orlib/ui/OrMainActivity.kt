@@ -43,6 +43,7 @@ import io.openremote.orlib.service.SecureStorageProvider
 import io.openremote.orlib.shared.SharedData.offlineActivity
 import org.json.JSONException
 import org.json.JSONObject
+import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -965,7 +966,11 @@ open class OrMainActivity : Activity() {
         private fun handleESPProvisionProviderMessage(data: JSONObject) {
             val action = data.getString("action")
             if (espProvisionProvider == null) {
-                espProvisionProvider = ESPProvisionProvider(activity)
+                if (baseUrl != null) {
+                    espProvisionProvider = ESPProvisionProvider(activity, URL(URL(baseUrl), "/api/master"))
+                } else {
+                    espProvisionProvider = ESPProvisionProvider(activity)
+                }
             }
             when {
                 action.equals(ESPProvisionProviderActions.PROVIDER_INIT, ignoreCase = true) -> {
@@ -1027,7 +1032,13 @@ open class OrMainActivity : Activity() {
                     }
                 }
                 action.equals(ESPProvisionProviderActions.PROVISION_DEVICE) -> {
-                    // handle provision device
+                    val userToken = data.optString("userToken")
+                    if (!userToken.isNullOrEmpty()) {
+                        espProvisionProvider?.provisionDevice(userToken)
+                    } else {
+                        // TODO
+                        // Handle null or empty case here
+                    }
                 }
                 action.equals(ESPProvisionProviderActions.EXIT_PROVISIONING) -> {
                     // handle exit provisioning
