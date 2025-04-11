@@ -33,6 +33,7 @@ object ESPProvisionProviderActions {
     const val START_BLE_SCAN = "START_BLE_SCAN"
     const val STOP_BLE_SCAN = "STOP_BLE_SCAN"
     const val CONNECT_TO_DEVICE = "CONNECT_TO_DEVICE"
+    const val DISCONNECT_FROM_DEVICE = "DISCONNECT_FROM_DEVICE"
     const val START_WIFI_SCAN = "START_WIFI_SCAN"
     const val STOP_WIFI_SCAN = "STOP_WIFI_SCAN"
     const val SEND_WIFI_CONFIGURATION = "SEND_WIFI_CONFIGURATION"
@@ -148,7 +149,7 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
     fun onRequestPermissionsResult(
         activity: Activity,
         requestCode: Int,
-        prefix: String
+        prefix: String?
     ) {
         if (requestCode == BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE) {
             val hasPermission = hasPermission()
@@ -157,12 +158,12 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
                     val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                     activity.startActivityForResult(enableBtIntent, ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE)
                 } else {
-//                    deviceRegistry.startDevicesScan(prefix)
+                    deviceRegistry.startDevicesScan(prefix)
                 }
             }
         } else if (requestCode == ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE) {
             if (bluetoothAdapter.isEnabled) {
-//                deviceRegistry.startDevicesScan(prefix)
+                deviceRegistry.startDevicesScan(prefix)
             }
         }
     }

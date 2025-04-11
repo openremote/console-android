@@ -35,6 +35,7 @@ import io.openremote.orlib.R
 import io.openremote.orlib.databinding.ActivityOrMainBinding
 import io.openremote.orlib.service.BleProvider
 import io.openremote.orlib.service.ConnectivityChangeReceiver
+import io.openremote.orlib.service.ESPProviderErrorCode
 import io.openremote.orlib.service.ESPProvisionProvider
 import io.openremote.orlib.service.ESPProvisionProviderActions
 import io.openremote.orlib.service.GeofenceProvider
@@ -77,6 +78,7 @@ open class OrMainActivity : Activity() {
     private var qrScannerProvider: QrScannerProvider? = null
     private var bleProvider: BleProvider? = null
     private var espProvisionProvider: ESPProvisionProvider? = null
+    private var prefix: String? = null
     private var secureStorageProvider: SecureStorageProvider? = null
     private var consoleId: String? = null
     private var connectFailCount: Int = 0
@@ -508,13 +510,7 @@ open class OrMainActivity : Activity() {
 
 
         } else if (requestCode == ESPProvisionProvider.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE || requestCode == ESPProvisionProvider.ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE) {
-            espProvisionProvider?.onRequestPermissionsResult(
-                this,
-                requestCode,
-                "moduleone-")
-// TODO: should retrieve prefix from somewhere
-
-
+            espProvisionProvider?.onRequestPermissionsResult(this, requestCode, prefix)
         } else if (requestCode == pushResponseCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 notifyClient(
@@ -991,9 +987,7 @@ open class OrMainActivity : Activity() {
                 }
 
                 action.equals(ESPProvisionProviderActions.START_BLE_SCAN, ignoreCase = true) -> {
-                    val prefix = data.optString("prefix", "")
-                    // TODO: store in variable so I can re-use when BLE permissions are received
-
+                    prefix = data.optString("prefix", "")
                     espProvisionProvider?.startDevicesScan(prefix,
                         this@OrMainActivity,
                         object : ESPProvisionProvider.ESPProvisionCallback {
@@ -1011,11 +1005,18 @@ open class OrMainActivity : Activity() {
                     if (!deviceId.isNullOrEmpty()) {
                         espProvisionProvider?.connectTo(deviceId)
                     } else {
-                        // TODO
-                        // Handle null or empty case here
+                        val payload: Map<String, Any> = hashMapOf(
+                            "action" to action,
+                            "provider" to "espprovision",
+                            "errorCode" to ESPProviderErrorCode.UNKNOWN_DEVICE.code,
+                            "errorMessage" to "Missing id parameter"
+                        )
                     }
                 }
 
+                action.equals(ESPProvisionProviderActions.DISCONNECT_FROM_DEVICE) -> {
+                    espProvisionProvider?.disconnectFromDevice()
+                }
                 action.equals(ESPProvisionProviderActions.START_WIFI_SCAN) -> {
                     espProvisionProvider?.startWifiScan()
                 }
@@ -1028,20 +1029,29 @@ open class OrMainActivity : Activity() {
                     if (!ssid.isNullOrEmpty() && !password.isNullOrEmpty()) {
                         espProvisionProvider?.sendWifiConfiguration(ssid, password)
                     } else {
-                        // TODO
+                        val payload: Map<String, Any> = hashMapOf(
+                            "action" to action,
+                            "provider" to "espprovision",
+                            "errorCode" to ESPProviderErrorCode.WIFI_AUTHENTICATION_ERROR.code,
+                            "errorMessage" to "Missing ssid or password parameter"
+                        )
                     }
+                }
+                action.equals(ESPProvisionProviderActions.EXIT_PROVISIONING) -> {
+                    espProvisionProvider?.exitProvisioning()
                 }
                 action.equals(ESPProvisionProviderActions.PROVISION_DEVICE) -> {
                     val userToken = data.optString("userToken")
                     if (!userToken.isNullOrEmpty()) {
                         espProvisionProvider?.provisionDevice(userToken)
                     } else {
-                        // TODO
-                        // Handle null or empty case here
+                        val payload: Map<String, Any> = hashMapOf(
+                            "action" to action,
+                            "provider" to "espprovision",
+                            "errorCode" to ESPProviderErrorCode.SECURITY_ERROR.code,
+                            "errorMessage" to "Missing userToken parameter"
+                        )
                     }
-                }
-                action.equals(ESPProvisionProviderActions.EXIT_PROVISIONING) -> {
-                    // handle exit provisioning
                 }
             }
         }
