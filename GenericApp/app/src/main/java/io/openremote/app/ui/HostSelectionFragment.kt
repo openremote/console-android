@@ -51,12 +51,7 @@ class HostSelectionFragment : Fragment() {
 
     private fun connectToHost(host: String) {
         parentActivity.binding.progressBar.visibility = View.VISIBLE
-        val url = when {
-            URLUtil.isValidUrl(host) -> host.plus("/api/master")
-            UrlUtils.isIpAddress(host) -> "https://${host}/api/master"
-            !UrlUtils.startsWithHttp(host) && UrlUtils.endsWithTld(host) -> "https://${host}/api/master"
-            else -> "https://${host}.openremote.app/api/master"
-        }
+        val url = UrlUtils.hostToUrl(host).plus("/api/master")
         parentActivity.apiManager = ApiManager(url)
         parentActivity.apiManager.getConsoleConfig { statusCode, consoleConfig, error ->
             when (statusCode) {
