@@ -211,7 +211,14 @@ class ORFirebaseMessagingService : com.google.firebase.messaging.FirebaseMessagi
         orAlertAction: ORAlertAction?
     ): PendingIntent {
         val actionIntent = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->Intent(this, NotificationActivity::class.java)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                Intent(this, NotificationActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
+                            Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                            Intent.FLAG_ACTIVITY_NO_HISTORY or
+                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                }
+            }
             else -> Intent(this, ORMessagingActionService::class.java)
         }
         actionIntent.putExtra("notificationId", notificationId)
