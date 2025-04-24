@@ -57,21 +57,8 @@ class WifiProvisioner(private var deviceConnection: DeviceConnection? = null, va
             }
 
             override fun onWiFiScanFailed(e: Exception) {
-                // TODO
-/*
-                Log.e(com.espressif.ui.activities.WiFiScanActivity.TAG, "onWiFiScanFailed")
-                e.printStackTrace()
-                runOnUiThread(object : Runnable {
-                    override fun run() {
-                        updateProgressAndScanBtn(false)
-                        Toast.makeText(
-                            this@WiFiScanActivity,
-                            "Failed to get Wi-Fi scan list",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                })
-            */
+                stopWifiScan(false)
+                sendWifiScanError(ESPProviderErrorCode.COMMUNICATION_ERROR, e.toString())
             }
         })
     }
