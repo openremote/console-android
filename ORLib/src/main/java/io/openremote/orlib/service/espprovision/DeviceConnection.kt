@@ -8,6 +8,7 @@ import com.espressif.provisioning.DeviceConnectionEvent
 import com.espressif.provisioning.ESPConstants
 import com.espressif.provisioning.ESPDevice
 import io.openremote.orlib.service.ESPProviderErrorCode
+import io.openremote.orlib.service.ESPProviderException
 import io.openremote.orlib.service.ESPProvisionProvider
 import io.openremote.orlib.service.ESPProvisionProviderActions
 import kotlinx.coroutines.CoroutineScope
@@ -68,20 +69,32 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
 
     fun exitProvisioning() {
         if (!isConnected) {
-            // TODO
+            throw ESPProviderException(
+                errorCode = ESPProviderErrorCode.NOT_CONNECTED,
+                errorMessage = "No connection established to device"
+            )
         }
-        // Is IO OK ?
+
+        // TODO: Is IO OK ?
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 configChannel?.exitProvisioning()
+            } catch (e: ORConfigChannelError) {
+                throw ESPProviderException(ESPProviderErrorCode.COMMUNICATION_ERROR, e.message ?: e.toString())
             } catch (e: Exception) {
-                // Handle error (log or show UI feedback)
+                throw ESPProviderException(ESPProviderErrorCode.GENERIC_ERROR, e.toString())
             }
         }
     }
 
     fun getDeviceInfo(): DeviceInfo {
-        // TODO: should check if connected
+        if (!isConnected) {
+            throw ESPProviderException(
+                errorCode = ESPProviderErrorCode.NOT_CONNECTED,
+                errorMessage = "No connection established to device"
+            )
+        }
+
         // TODO: should not block
         return runBlocking {
             configChannel!!.getDeviceInfo()
@@ -94,12 +107,12 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         mqttPassword: String,
         assetId: String
     ) {
-/*        if (!isConnected) {
+        if (!isConnected) {
             throw ESPProviderException(
                 errorCode = ESPProviderErrorCode.NOT_CONNECTED,
                 errorMessage = "No connection established to device"
             )
-        }*/
+        }
         try {
             configChannel?.sendOpenRemoteConfig(
                 mqttBrokerUrl = mqttBrokerUrl,
@@ -108,36 +121,31 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
                 assetId = assetId
             )
         } catch (e: Exception) {
-            /*
             throw ESPProviderException(
                 errorCode = ESPProviderErrorCode.COMMUNICATION_ERROR,
                 errorMessage = e.localizedMessage ?: "Unknown error"
             )
-
-             */
         }
     }
 
     suspend fun getBackendConnectionStatus(): BackendConnectionStatus {
-        /*
         if (!isConnected) {
             throw ESPProviderException(
                 errorCode = ESPProviderErrorCode.NOT_CONNECTED,
                 errorMessage = "No connection established to device"
             )
-        }*/
+        }
         return try {
             configChannel?.getBackendConnectionStatus()
-                ?: BackendConnectionStatus.DISCONNECTED /*throw ESPProviderException(
+                ?: throw ESPProviderException(
                         errorCode = ESPProviderErrorCode.COMMUNICATION_ERROR,
                         errorMessage = "Channel returned null status"
-                    )*/
+                    )
         } catch (e: Exception) {
-            /*
-                throw ESPProviderException(
-                    errorCode = ESPProviderErrorCode.COMMUNICATION_ERROR,
-                    errorMessage = e.localizedMessage ?: "Unknown error"
-                )*/
+            throw ESPProviderException(
+                errorCode = ESPProviderErrorCode.COMMUNICATION_ERROR,
+                errorMessage = e.localizedMessage ?: "Unknown error"
+            )
         } as BackendConnectionStatus
     }
 

@@ -3,6 +3,7 @@ package io.openremote.orlib.service.espprovision
 import android.util.Log
 import data.entity.Response
 import io.openremote.orlib.service.ESPProviderErrorCode
+import io.openremote.orlib.service.ESPProviderException
 import io.openremote.orlib.service.ESPProvisionProvider
 import io.openremote.orlib.service.ESPProvisionProviderActions
 import utils.PasswordType
@@ -58,6 +59,8 @@ class BatteryProvision(var deviceConnection: DeviceConnection?, var callbackChan
                     ?: BackendConnectionStatus.DISCONNECTED
             }
             sendProvisionDeviceStatus(true)
+        } catch (e: ESPProviderException) {
+            sendProvisionDeviceStatus(false, e.errorCode, e.errorMessage)
         } catch (e: BatteryProvisionAPIError) {
             val (errorCode, errorMessage) = mapBatteryProvisionAPIError(e)
             sendProvisionDeviceStatus(false, errorCode, errorMessage)

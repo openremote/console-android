@@ -210,15 +210,24 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
 
     fun exitProvisioning() {
         if (deviceConnection == null) {
-            // TODO
             return
         }
         if (!deviceConnection!!.isConnected) {
-            // TODO
+            sendExitProvisioningError(ESPProviderErrorCode.NOT_CONNECTED, "No connection established to device")
             return
         }
         deviceConnection!!.exitProvisioning()
-        // TODO
+    }
+
+    private fun sendExitProvisioningError(error: ESPProviderErrorCode, errorMessage: String?) {
+        val data = mutableMapOf<String, Any>()
+
+        data["errorCode"] = error.code
+        errorMessage?.let {
+            data["errorMessage"] = it
+        }
+
+        deviceRegistry?.callbackChannel?.sendMessage(ESPProvisionProviderActions.EXIT_PROVISIONING, data)
     }
 
     // Wifi scan
@@ -279,6 +288,8 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
     }
 
 }
+
+data class ESPProviderException(val errorCode: ESPProviderErrorCode, val errorMessage: String) : Exception()
 
 enum class ESPProviderErrorCode(val code: Int) {
     UNKNOWN_DEVICE(100),
