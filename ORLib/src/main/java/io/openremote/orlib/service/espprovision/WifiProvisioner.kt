@@ -1,14 +1,11 @@
 package io.openremote.orlib.service.espprovision
 
-import android.util.Log
-import android.widget.Toast
 import com.espressif.provisioning.ESPConstants
 import com.espressif.provisioning.ESPConstants.ProvisionFailureReason
 import com.espressif.provisioning.WiFiAccessPoint
 import com.espressif.provisioning.listeners.ProvisionListener
 import com.espressif.provisioning.listeners.WiFiScanListener
 import io.openremote.orlib.service.ESPProviderErrorCode
-import io.openremote.orlib.service.ESPProvisionProvider
 import io.openremote.orlib.service.ESPProvisionProviderActions
 
 class WifiProvisioner(private var deviceConnection: DeviceConnection? = null, var callbackChannel: CallbackChannel? = null, searchWifiTimeout: Long, searchWifiMaxIterations: Int) {
@@ -43,17 +40,38 @@ class WifiProvisioner(private var deviceConnection: DeviceConnection? = null, va
             return
         }
 
-
         deviceConnection?.espDevice?.scanNetworks(object : WiFiScanListener {
             override fun onWifiListReceived(wifiList: ArrayList<WiFiAccessPoint?>?) {
-                wifiList?.let { wifiNetworks.addAll(it.mapNotNull { network -> network }) }
-                callbackChannel?.sendMessage(ESPProvisionProviderActions.START_WIFI_SCAN, hashMapOf(
-                    "networks" to wifiNetworks.map { network ->
-                        hashMapOf(
-                            "ssid" to network.wifiName,
-                            "signalStrength" to network.rssi)
+                wifiList?.let {
+                    if (wifiScanning) {
+                        var wifiNetworksChanged = false
+                        it.forEach { wifiAP ->
+                            wifiAP?.let { discoveredAP ->
+                                val ap = wifiNetworks.firstOrNull() { ap -> discoveredAP.wifiName == ap.wifiName }
+                                if (ap != null) {
+                                    if (ap.rssi != discoveredAP.rssi) {
+                                        wifiNetworksChanged = true
+                                        wifiNetworks.remove(ap)
+                                        wifiNetworks.add(discoveredAP)
+                                    }
+                                } else {
+                                    wifiNetworksChanged = true
+                                    wifiNetworks.add(discoveredAP)
+                                }
+                            }
+                        }
+                        if (wifiNetworks.isNotEmpty() && wifiNetworksChanged) {
+                            callbackChannel?.sendMessage(ESPProvisionProviderActions.START_WIFI_SCAN, hashMapOf(
+                                "networks" to wifiNetworks.map { network ->
+                                    hashMapOf(
+                                        "ssid" to network.wifiName,
+                                        "signalStrength" to network.rssi)
+                                }
+                            ))
+                        }
+                        scanWifi()
                     }
-                ))
+                }
             }
 
             override fun onWiFiScanFailed(e: Exception) {
@@ -111,7 +129,6 @@ class WifiProvisioner(private var deviceConnection: DeviceConnection? = null, va
             override fun onProvisioningFailed(e: java.lang.Exception?) {
                 sendWifiConfigurationStatus(false, ESPProviderErrorCode.GENERIC_ERROR, e.toString())
             }
-
         })
     }
 
