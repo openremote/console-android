@@ -222,11 +222,16 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
             return
         }
         deviceConnection!!.exitProvisioning()
+        deviceRegistry?.callbackChannel?.sendMessage(
+            ESPProvisionProviderActions.EXIT_PROVISIONING,
+            mapOf("exit" to true)
+        )
     }
 
     private fun sendExitProvisioningError(error: ESPProviderErrorCode, errorMessage: String?) {
         val data = mutableMapOf<String, Any>()
 
+        data["exit"] = false
         data["errorCode"] = error.code
         errorMessage?.let {
             data["errorMessage"] = it
