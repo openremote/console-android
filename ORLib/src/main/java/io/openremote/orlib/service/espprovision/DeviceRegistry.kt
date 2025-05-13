@@ -129,6 +129,7 @@ class DeviceRegistry(private val context: Context, searchDeviceTimeout: Long, se
 
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH])
     fun startDevicesScan(prefix: String? = "") {
+        Log.d("espprovision", "startDevicesScan called with prefix >" + prefix + "<")
         bleScanning = true
         resetDevicesList()
         loopDetector.reset()

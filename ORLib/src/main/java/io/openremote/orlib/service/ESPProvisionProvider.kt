@@ -151,6 +151,7 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
         requestCode: Int,
         prefix: String?
     ) {
+        Log.d("espprovision", "onRequestPermissionsResult called with prefix >" + prefix + "<")
         if (requestCode == BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE) {
             val hasPermission = hasPermission()
             if (hasPermission) {
@@ -158,12 +159,16 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
                     val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                     activity.startActivityForResult(enableBtIntent, ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE)
                 } else {
-                    deviceRegistry.startDevicesScan(prefix)
+                    if (prefix != null) {
+                        deviceRegistry.startDevicesScan(prefix)
+                    }
                 }
             }
         } else if (requestCode == ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE) {
             if (bluetoothAdapter.isEnabled) {
-                deviceRegistry.startDevicesScan(prefix)
+                if (prefix != null) {
+                    deviceRegistry.startDevicesScan(prefix)
+                }
             }
         }
     }

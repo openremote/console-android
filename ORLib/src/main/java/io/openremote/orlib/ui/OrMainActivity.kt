@@ -77,8 +77,12 @@ open class OrMainActivity : Activity() {
     private var geofenceProvider: GeofenceProvider? = null
     private var qrScannerProvider: QrScannerProvider? = null
     private var bleProvider: BleProvider? = null
+
     private var espProvisionProvider: ESPProvisionProvider? = null
+    // We store the prefix here so it can be used to start a scan after permissions request
+    // A scan is only started if the prefix is NOT null
     private var prefix: String? = null
+
     private var secureStorageProvider: SecureStorageProvider? = null
     private var consoleId: String? = null
     private var connectFailCount: Int = 0
@@ -987,6 +991,7 @@ open class OrMainActivity : Activity() {
                 }
 
                 action.equals(ESPProvisionProviderActions.START_BLE_SCAN, ignoreCase = true) -> {
+                    // Must define a value for prefix, to ensure scan is started in case we need to request BLE permissions (though it should not happen here)
                     prefix = data.optString("prefix", "")
                     espProvisionProvider?.startDevicesScan(prefix,
                         this@OrMainActivity,
