@@ -17,7 +17,7 @@ bin-release/
 .vscode/
 .idea/
 .local/
-.DS_*/
+.DS_*
 
 # File extensions
 *.apk
