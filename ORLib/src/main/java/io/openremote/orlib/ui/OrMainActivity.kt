@@ -35,12 +35,16 @@ import io.openremote.orlib.R
 import io.openremote.orlib.databinding.ActivityOrMainBinding
 import io.openremote.orlib.service.BleProvider
 import io.openremote.orlib.service.ConnectivityChangeReceiver
+import io.openremote.orlib.service.ESPProviderErrorCode
+import io.openremote.orlib.service.ESPProvisionProvider
+import io.openremote.orlib.service.ESPProvisionProviderActions
 import io.openremote.orlib.service.GeofenceProvider
 import io.openremote.orlib.service.QrScannerProvider
 import io.openremote.orlib.service.SecureStorageProvider
 import io.openremote.orlib.shared.SharedData.offlineActivity
 import org.json.JSONException
 import org.json.JSONObject
+import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -73,6 +77,12 @@ open class OrMainActivity : Activity() {
     private var geofenceProvider: GeofenceProvider? = null
     private var qrScannerProvider: QrScannerProvider? = null
     private var bleProvider: BleProvider? = null
+
+    private var espProvisionProvider: ESPProvisionProvider? = null
+    // We store the prefix here so it can be used to start a scan after permissions request
+    // A scan is only started if the prefix is NOT null
+    private var prefix: String? = null
+
     private var secureStorageProvider: SecureStorageProvider? = null
     private var consoleId: String? = null
     private var connectFailCount: Int = 0
@@ -501,6 +511,10 @@ open class OrMainActivity : Activity() {
                         notifyClient(responseData)
                     }
                 })
+
+
+        } else if (requestCode == ESPProvisionProvider.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE || requestCode == ESPProvisionProvider.ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE) {
+            espProvisionProvider?.onRequestPermissionsResult(this, requestCode, prefix)
         } else if (requestCode == pushResponseCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 notifyClient(
@@ -587,6 +601,10 @@ open class OrMainActivity : Activity() {
 
                                 provider.equals("ble", ignoreCase = true) -> {
                                     handleBleProviderMessage(it)
+                                }
+
+                                provider.equals("espprovision", ignoreCase = true) -> {
+                                    handleESPProvisionProviderMessage(it)
                                 }
                             }
                         }
@@ -939,6 +957,106 @@ open class OrMainActivity : Activity() {
                             notifyClient(responseData)
                         }
                     })
+                }
+            }
+        }
+
+
+        @Throws(JSONException::class)
+        private fun handleESPProvisionProviderMessage(data: JSONObject) {
+            val action = data.getString("action")
+            if (espProvisionProvider == null) {
+                if (baseUrl != null) {
+                    espProvisionProvider = ESPProvisionProvider(activity, URL(URL(baseUrl), "/api/master"))
+                } else {
+                    espProvisionProvider = ESPProvisionProvider(activity)
+                }
+            }
+            when {
+                action.equals(ESPProvisionProviderActions.PROVIDER_INIT, ignoreCase = true) -> {
+                    val initData: Map<String, Any> = espProvisionProvider!!.initialize()
+                    notifyClient(initData)
+                }
+                action.equals(ESPProvisionProviderActions.PROVIDER_ENABLE, ignoreCase = true) -> {
+                    espProvisionProvider?.enable(object : ESPProvisionProvider.ESPProvisionCallback {
+                        override fun accept(responseData: Map<String, Any>) {
+                            notifyClient(responseData)
+                        }
+                    }, activity)
+                }
+
+                action.equals(ESPProvisionProviderActions.PROVIDER_DISABLE, ignoreCase = true) -> {
+                    val response = espProvisionProvider?.disable()
+                    notifyClient(response)
+                }
+
+                action.equals(ESPProvisionProviderActions.START_BLE_SCAN, ignoreCase = true) -> {
+                    // Must define a value for prefix, to ensure scan is started in case we need to request BLE permissions (though it should not happen here)
+                    prefix = data.optString("prefix", "")
+                    espProvisionProvider?.startDevicesScan(prefix,
+                        this@OrMainActivity,
+                        object : ESPProvisionProvider.ESPProvisionCallback {
+                            override fun accept(responseData: Map<String, Any>) {
+                                notifyClient(responseData)
+                            }
+                        })
+                }
+                action.equals(ESPProvisionProviderActions.STOP_BLE_SCAN, ignoreCase = true) -> {
+                    espProvisionProvider?.stopDevicesScan()
+                }
+
+                action.equals(ESPProvisionProviderActions.CONNECT_TO_DEVICE) -> {
+                    val deviceId = data.optString("id")
+                    if (!deviceId.isNullOrEmpty()) {
+                        espProvisionProvider?.connectTo(deviceId)
+                    } else {
+                        val payload: Map<String, Any> = hashMapOf(
+                            "action" to action,
+                            "provider" to "espprovision",
+                            "errorCode" to ESPProviderErrorCode.UNKNOWN_DEVICE.code,
+                            "errorMessage" to "Missing id parameter"
+                        )
+                    }
+                }
+
+                action.equals(ESPProvisionProviderActions.DISCONNECT_FROM_DEVICE) -> {
+                    espProvisionProvider?.disconnectFromDevice()
+                }
+                action.equals(ESPProvisionProviderActions.START_WIFI_SCAN) -> {
+                    espProvisionProvider?.startWifiScan()
+                }
+                action.equals(ESPProvisionProviderActions.STOP_WIFI_SCAN) -> {
+                    espProvisionProvider?.stopWifiScan()
+                }
+                action.equals(ESPProvisionProviderActions.SEND_WIFI_CONFIGURATION) -> {
+                    val ssid = data.optString("ssid")
+                    val password = data.optString("password")
+                    if (!ssid.isNullOrEmpty() && !password.isNullOrEmpty()) {
+                        espProvisionProvider?.sendWifiConfiguration(ssid, password)
+                    } else {
+                        val payload: Map<String, Any> = hashMapOf(
+                            "action" to action,
+                            "provider" to "espprovision",
+                            "errorCode" to ESPProviderErrorCode.WIFI_AUTHENTICATION_ERROR.code,
+                            "errorMessage" to "Missing ssid or password parameter"
+                        )
+                    }
+                }
+                action.equals(ESPProvisionProviderActions.EXIT_PROVISIONING) -> {
+                    espProvisionProvider?.exitProvisioning()
+                }
+                action.equals(ESPProvisionProviderActions.PROVISION_DEVICE) -> {
+                    val userToken = data.optString("userToken")
+                    if (!userToken.isNullOrEmpty()) {
+                        espProvisionProvider?.provisionDevice(userToken)
+                    } else {
+                        val payload: Map<String, Any> = hashMapOf(
+                            "action" to action,
+                            "provider" to "espprovision",
+                            "errorCode" to ESPProviderErrorCode.SECURITY_ERROR.code,
+                            "errorMessage" to "Missing userToken parameter"
+                        )
+                    }
                 }
             }
         }
