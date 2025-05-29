@@ -94,7 +94,10 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
     }
 
     @SuppressLint("MissingPermission")
-    fun enable(callback: ESPProvisionCallback?, activity: Activity) {
+    fun enable(callback: ESPProvisionCallback, activity: Activity) {
+        deviceRegistry.callbackChannel = CallbackChannel(callback, "espprovision")
+        deviceRegistry.enable()
+
         if (!bluetoothAdapter.isEnabled) {
             Log.d("ESP", "BLE not enabled")
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -106,19 +109,25 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
             requestPermissions(activity)
         }
 
-        deviceRegistry.enable()
 
+        if (bluetoothAdapter.isEnabled && hasPermission()) {
+            providerEnabled(deviceRegistry.callbackChannel)
+        }
+    }
+
+    fun providerEnabled(callbackChannel: CallbackChannel?) {
         val sharedPreferences =
-            context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
+            context.getSharedPreferences(
+                context.getString(R.string.app_name),
+                Context.MODE_PRIVATE
+            )
 
         sharedPreferences.edit()
             .remove(espProvisionDisabledKey)
             .apply()
 
-        callback?.accept(
+        callbackChannel?.sendMessage(ESPProvisionProviderActions.PROVIDER_ENABLE,
             hashMapOf(
-                "action" to ESPProvisionProviderActions.PROVIDER_ENABLE,
-                "provider" to "espprovision",
                 "hasPermission" to hasPermission(),
                 "success" to true,
                 "enabled" to true,
@@ -159,6 +168,7 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
                     val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                     activity.startActivityForResult(enableBtIntent, ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE)
                 } else {
+                    providerEnabled(deviceRegistry.callbackChannel)
                     if (prefix != null) {
                         deviceRegistry.startDevicesScan(prefix)
                     }
@@ -166,6 +176,7 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
             }
         } else if (requestCode == ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE) {
             if (bluetoothAdapter.isEnabled) {
+                providerEnabled(deviceRegistry.callbackChannel)
                 if (prefix != null) {
                     deviceRegistry.startDevicesScan(prefix)
                 }
@@ -177,7 +188,6 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
 
     @SuppressLint("MissingPermission")
     fun startDevicesScan(prefix: String?, activity: Activity, callback: ESPProvisionCallback) {
-        // TODO: check in BLE provider what activity is used for
         deviceRegistry.callbackChannel = CallbackChannel(callback, "espprovision")
         if (!bluetoothAdapter.isEnabled) {
             Log.d("ESP", "BLE not enabled")
