@@ -23,7 +23,7 @@ class EspressifProvisionManager(private val provisionManager: ESPProvisionManage
         provisionManager.createESPDevice(ESPConstants.TransportType.TRANSPORT_BLE, ESPConstants.SecurityType.SECURITY_1)
     }
 
-    @androidx.annotation.RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.BLUETOOTH_ADMIN, android.Manifest.permission.BLUETOOTH])
+    @RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.BLUETOOTH_ADMIN, android.Manifest.permission.BLUETOOTH])
     suspend fun searchESPDevices(devicePrefix: String): List<DeviceRegistry.DiscoveredDevice> {
         return withContext(Dispatchers.Main) {
             // If on IO: Error during device scan: Can't create handler inside thread Thread[DefaultDispatcher-worker-2,5,main] that has not called Looper.prepare()
@@ -113,7 +113,7 @@ class DeviceRegistry(private val context: Context, searchDeviceTimeout: Long, se
         }
     }
 
-    @androidx.annotation.RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.BLUETOOTH_ADMIN, android.Manifest.permission.BLUETOOTH])
+    @RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.BLUETOOTH_ADMIN, android.Manifest.permission.BLUETOOTH])
     private fun devicesScan(prefix: String) {
         provisionManager?.let { manager ->
             if (loopDetector.detectLoop()) {
