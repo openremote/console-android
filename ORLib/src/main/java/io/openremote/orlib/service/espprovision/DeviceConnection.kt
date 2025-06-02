@@ -28,8 +28,8 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         private const val SEC_TYPE_0: Int = 0
         private const val SEC_TYPE_1: Int = 1
         private const val SEC_TYPE_2: Int = 2
-
     }
+
     init {
         EventBus.getDefault().register(this)
     }
@@ -75,7 +75,6 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
             )
         }
 
-        // TODO: Is IO OK ?
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 configChannel?.exitProvisioning()
@@ -87,7 +86,7 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         }
     }
 
-    fun getDeviceInfo(): DeviceInfo {
+    suspend fun getDeviceInfo(): DeviceInfo {
         if (!isConnected) {
             throw ESPProviderException(
                 errorCode = ESPProviderErrorCode.NOT_CONNECTED,
@@ -95,10 +94,7 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
             )
         }
 
-        // TODO: should not block
-        return runBlocking {
-            configChannel!!.getDeviceInfo()
-        }
+        return configChannel!!.getDeviceInfo()
     }
 
     suspend fun sendOpenRemoteConfig(
