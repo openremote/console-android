@@ -6,6 +6,8 @@ import io.openremote.orlib.service.ESPProviderErrorCode
 import io.openremote.orlib.service.ESPProviderException
 import io.openremote.orlib.service.ESPProvisionProvider
 import io.openremote.orlib.service.ESPProvisionProviderActions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import utils.PasswordType
 import java.net.URL
 import java.util.Locale
@@ -67,7 +69,7 @@ class BatteryProvision(var deviceConnection: DeviceConnection?, var callbackChan
         }
     }
 
-    private fun sendProvisionDeviceStatus(connected: Boolean, error: ESPProviderErrorCode? = null, errorMessage: String? = null) {
+    private suspend fun sendProvisionDeviceStatus(connected: Boolean, error: ESPProviderErrorCode? = null, errorMessage: String? = null) {
         val data = mutableMapOf<String, Any>("connected" to connected)
 
         error?.let {
@@ -77,7 +79,10 @@ class BatteryProvision(var deviceConnection: DeviceConnection?, var callbackChan
             data["errorMessage"] = it
         }
 
-        callbackChannel?.sendMessage(ESPProvisionProviderActions.PROVISION_DEVICE, data)
+        // We bring it back to main context as this eventually is a message to the Web view
+        withContext(Dispatchers.Main) {
+            callbackChannel?.sendMessage(ESPProvisionProviderActions.PROVISION_DEVICE, data)
+        }
     }
 
     private fun mapBatteryProvisionAPIError(error: BatteryProvisionAPIError): Pair<ESPProviderErrorCode, String?> {

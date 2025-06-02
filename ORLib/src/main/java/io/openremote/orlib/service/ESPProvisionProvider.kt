@@ -273,10 +273,8 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
     // OR Configuration
 
     fun provisionDevice(userToken: String) {
-        // TODO
-
         val batteryProvision = BatteryProvision(deviceConnection, deviceRegistry.callbackChannel, apiURL)
-        CoroutineScope(Dispatchers.Main).launch {  // TODO: what's the appropriate dispatcher ? and should this be here or further down the call chain ?
+        CoroutineScope(Dispatchers.IO).launch {
             batteryProvision.provision(userToken)
         }
     }
