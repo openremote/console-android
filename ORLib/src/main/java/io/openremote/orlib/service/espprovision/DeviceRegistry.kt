@@ -35,10 +35,8 @@ class EspressifProvisionManager(private val provisionManager: ESPProvisionManage
     @androidx.annotation.RequiresPermission(allOf = [android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.BLUETOOTH_ADMIN, android.Manifest.permission.BLUETOOTH])
     suspend fun searchESPDevices(devicePrefix: String): List<DeviceRegistry.DiscoveredDevice> {
         return withContext(Dispatchers.Main) {
-
-            // Was Dispatchers.IO
-
-
+            // If on IO: Error during device scan: Can't create handler inside thread Thread[DefaultDispatcher-worker-2,5,main] that has not called Looper.prepare()
+            // But I don't see any warnings that the main thread is getting blocked
             suspendCancellableCoroutine { continuation ->
                 var alreadyResumed = false // TODO: does it behave same as iOS ? will we receive 2 times the call ?
                 var devices: MutableList<DeviceRegistry.DiscoveredDevice> = mutableListOf()
