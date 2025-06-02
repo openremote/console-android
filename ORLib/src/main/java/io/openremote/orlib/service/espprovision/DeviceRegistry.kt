@@ -18,15 +18,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-/*
-// TODO: do we really need to for Android ?
-interface ORESPProvisionManager {
-    suspend fun searchESPDevices(devicePrefix: String, transport: ESPConstants.TransportType, security: ESPConstants.SecurityType): List<
-            DeviceRegistry.DiscoveredDevice>
-    fun stopESPDevicesSearch()
-}
- */
-
 class EspressifProvisionManager(private val provisionManager: ESPProvisionManager) {
     init {
         provisionManager.createESPDevice(ESPConstants.TransportType.TRANSPORT_BLE, ESPConstants.SecurityType.SECURITY_1)
@@ -38,7 +29,6 @@ class EspressifProvisionManager(private val provisionManager: ESPProvisionManage
             // If on IO: Error during device scan: Can't create handler inside thread Thread[DefaultDispatcher-worker-2,5,main] that has not called Looper.prepare()
             // But I don't see any warnings that the main thread is getting blocked
             suspendCancellableCoroutine { continuation ->
-                var alreadyResumed = false // TODO: does it behave same as iOS ? will we receive 2 times the call ?
                 var devices: MutableList<DeviceRegistry.DiscoveredDevice> = mutableListOf()
 
                 provisionManager.searchBleEspDevices(devicePrefix, object: BleScanListener {
@@ -47,17 +37,12 @@ class EspressifProvisionManager(private val provisionManager: ESPProvisionManage
                     }
 
                     override fun onPeripheralFound(device: BluetoothDevice, scanResult: ScanResult) {
-//                        Log.d("espprovision", "Found peripheral")
                         if (!scanResult.scanRecord?.deviceName.isNullOrEmpty()) {
-//                            Log.d("espprovision", "Device name ${scanResult.scanRecord?.deviceName}")
-
                             var serviceUuid = ""
                             scanResult.scanRecord?.serviceUuids?.firstOrNull()?.toString()?.let { uuid ->
                                 serviceUuid = uuid
                             }
-//                            Log.d("espprovision", "Service UUID $serviceUuid")
                             scanResult.scanRecord!!.deviceName?.let { deviceName ->
-                                // TODO: should only add device if it doesn't exist yet
                                 if (devices.find { it.name == deviceName } == null) {
                                     devices.add(DeviceRegistry.DiscoveredDevice(deviceName, serviceUuid, device))
                                     Log.d("espprovision", "Added device, list is now $devices")
@@ -77,18 +62,6 @@ class EspressifProvisionManager(private val provisionManager: ESPProvisionManage
                     }
 
                 })
-                /*
-                provisionManager.searchESPDevices(devicePrefix, transport, security) { deviceList, error ->
-                    if (error != null) {
-                        if (!alreadyResumed) {
-                            alreadyResumed = true
-                            continuation.resumeWith(Result.failure(error))
-                        }
-                    } else {
-                        alreadyResumed = true
-                        continuation.resumeWith(Result.success(deviceList ?: emptyList()))
-                    }
-                }*/
             }
         }
     }
@@ -107,9 +80,6 @@ class DeviceRegistry(private val context: Context, searchDeviceTimeout: Long, se
     private var loopDetector = LoopDetector(searchDeviceTimeout, searchDeviceMaxIterations)
     var provisionManager: EspressifProvisionManager? = null
 
-    //    var callbackChannel: CallbackChannel? = null
-//    private var devices = mutableListOf<DiscoveredDevice>()
-//    private val devicesIndex = mutableMapOf<UUID, DiscoveredDevice>()
     var bleScanning = false
 
     private var devices: MutableList<DiscoveredDevice> = mutableListOf()
@@ -153,9 +123,6 @@ class DeviceRegistry(private val context: Context, searchDeviceTimeout: Long, se
             }
 
             CoroutineScope(Dispatchers.IO).launch {
-
-//                Log.d("DeviceRegistry", "Starting BLE scan")
-
                 try {
                     val deviceList = manager.searchESPDevices(prefix)
                     Log.d("espprovision", "I got a list of devices $deviceList")
