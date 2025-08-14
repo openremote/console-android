@@ -1007,8 +1007,9 @@ open class OrMainActivity : Activity() {
 
                 action.equals(ESPProvisionProviderActions.CONNECT_TO_DEVICE) -> {
                     val deviceId = data.optString("id")
+                    val pop = data.optString("pop")
                     if (!deviceId.isNullOrEmpty()) {
-                        espProvisionProvider?.connectTo(deviceId)
+                        espProvisionProvider?.connectTo(deviceId, pop)
                     } else {
                         val payload: Map<String, Any> = hashMapOf(
                             "action" to action,
