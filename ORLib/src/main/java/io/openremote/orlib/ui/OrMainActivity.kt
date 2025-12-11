@@ -1068,20 +1068,27 @@ open class OrMainActivity : Activity() {
             var jsonString = mapper.writeValueAsString(data)
             LOG.info("Sending response to client: $jsonString")
 
-            // Double escape quotes (this is needed for browsers to be able to parse the response)
-            jsonString = jsonString.replace("\\\"", "\\\\\"")
-
             runOnUiThread {
                 binding.webView.evaluateJavascript(
                     String.format(
                         "OpenRemoteConsole._handleProviderResponse('%s')",
-                        jsonString
+                        jsonString.escapeForJavaScript()
                     ), null
                 )
             }
         } catch (e: JsonProcessingException) {
             e.printStackTrace()
         }
+    }
+
+    private fun String.escapeForJavaScript(): String {
+        return this
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
     }
 
     private fun onConnectivityChanged(connectivity: Boolean) {
