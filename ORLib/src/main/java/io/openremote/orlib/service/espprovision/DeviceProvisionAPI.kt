@@ -12,21 +12,21 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
-interface BatteryProvisionAPI {
-    suspend fun provision(deviceId: String, password: String, token: String): String
+interface DeviceProvisionAPI {
+    suspend fun provision(modelName: String, deviceId: String, password: String, token: String): String
 }
 
-class BatteryProvisionAPIREST(private val apiURL: URL) : BatteryProvisionAPI {
+class DeviceProvisionAPIREST(private val apiURL: URL) : DeviceProvisionAPI {
 
     companion object {
-        private const val TAG = "BatteryProvisionAPIREST"
+        private const val TAG = "DeviceProvisionAPIREST"
     }
 
-    override suspend fun provision(deviceId: String, password: String, token: String): String = withContext(Dispatchers.IO) {
+    override suspend fun provision(modelName: String, deviceId: String, password: String, token: String): String = withContext(Dispatchers.IO) {
         Log.d(ESPProvisionProvider.TAG, "apiURL $apiURL")
         val uri = Uri.parse(apiURL.toString()).buildUpon()
             .appendPath("rest")
-            .appendPath("battery")
+            .appendPath("device")
             .build()
 
         val url = URL(uri.toString())
@@ -38,6 +38,7 @@ class BatteryProvisionAPIREST(private val apiURL: URL) : BatteryProvisionAPI {
         connection.doOutput = true
 
         val requestBody = JSONObject().apply {
+            put("modelName", modelName)
             put("deviceId", deviceId)
             put("password", password)
         }
@@ -57,28 +58,28 @@ class BatteryProvisionAPIREST(private val apiURL: URL) : BatteryProvisionAPI {
                 Log.d(ESPProvisionProvider.TAG, "Response code $responseCode")
                 Log.d(ESPProvisionProvider.TAG, "Response text $responseText")
                 when (responseCode) {
-                    401 -> throw BatteryProvisionAPIError.Unauthorized
-                    409 -> throw BatteryProvisionAPIError.BusinessError
-                    else -> throw BatteryProvisionAPIError.UnknownError
+                    401 -> throw DeviceProvisionAPIError.Unauthorized
+                    409 -> throw DeviceProvisionAPIError.BusinessError
+                    else -> throw DeviceProvisionAPIError.UnknownError
                 }
             }
 
             val json = JSONObject(responseText)
             return@withContext json.getString("assetId")
-        } catch (e: BatteryProvisionAPIError) {
+        } catch (e: DeviceProvisionAPIError) {
             throw e
         } catch (e: Exception) {
-            throw BatteryProvisionAPIError.GenericError(e)
+            throw DeviceProvisionAPIError.GenericError(e)
         } finally {
             connection.disconnect()
         }
     }
 }
 
-sealed class BatteryProvisionAPIError(message: String? = null, cause: Throwable? = null) : Exception(message, cause) {
-    object Unauthorized : BatteryProvisionAPIError("Unauthorized")
-    data class CommunicationError(val reason: String) : BatteryProvisionAPIError(reason)
-    object BusinessError : BatteryProvisionAPIError("Business logic error")
-    data class GenericError(val error: Throwable) : BatteryProvisionAPIError(error.message, error)
-    object UnknownError : BatteryProvisionAPIError("Unknown error")
+sealed class DeviceProvisionAPIError(message: String? = null, cause: Throwable? = null) : Exception(message, cause) {
+    object Unauthorized : DeviceProvisionAPIError("Unauthorized")
+    data class CommunicationError(val reason: String) : DeviceProvisionAPIError(reason)
+    object BusinessError : DeviceProvisionAPIError("Business logic error")
+    data class GenericError(val error: Throwable) : DeviceProvisionAPIError(error.message, error)
+    object UnknownError : DeviceProvisionAPIError("Unknown error")
 }

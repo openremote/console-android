@@ -13,12 +13,9 @@ import android.util.Log
 import androidx.annotation.VisibleForTesting
 import androidx.core.app.ActivityCompat
 import io.openremote.orlib.R
-import io.openremote.orlib.service.BleProvider.BleCallback
-import io.openremote.orlib.service.BleProvider.Companion.BLUETOOTH_PERMISSION_REQUEST_CODE
-import io.openremote.orlib.service.BleProvider.Companion.ENABLE_BLUETOOTH_REQUEST_CODE
-import io.openremote.orlib.service.espprovision.BatteryProvision
 import io.openremote.orlib.service.espprovision.CallbackChannel
 import io.openremote.orlib.service.espprovision.DeviceConnection
+import io.openremote.orlib.service.espprovision.DeviceProvision
 import io.openremote.orlib.service.espprovision.DeviceRegistry
 import io.openremote.orlib.service.espprovision.WifiProvisioner
 import kotlinx.coroutines.CoroutineScope
@@ -273,9 +270,9 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
     // OR Configuration
 
     fun provisionDevice(userToken: String) {
-        val batteryProvision = BatteryProvision(deviceConnection, deviceRegistry.callbackChannel, apiURL)
+        val deviceProvision = DeviceProvision(deviceConnection, deviceRegistry.callbackChannel, apiURL)
         CoroutineScope(Dispatchers.IO).launch {
-            batteryProvision.provision(userToken)
+            deviceProvision.provision(userToken)
         }
     }
 

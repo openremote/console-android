@@ -14,13 +14,13 @@ import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class BatteryProvision(var deviceConnection: DeviceConnection?, var callbackChannel: CallbackChannel?, var apiURL: URL) {
-    var batteryProvisionAPI: BatteryProvisionAPI
+class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChannel: CallbackChannel?, var apiURL: URL) {
+    var deviceProvisionAPI: DeviceProvisionAPI
 
     var backendConnectionTimeoutMillis = 60_000
 
     init {
-        batteryProvisionAPI = BatteryProvisionAPIREST(apiURL)
+        deviceProvisionAPI = DeviceProvisionAPIREST(apiURL)
     }
 
     suspend fun provision(userToken: String) {
@@ -34,7 +34,7 @@ class BatteryProvision(var deviceConnection: DeviceConnection?, var callbackChan
 
             val password = generatePassword()
 
-            val assetId = batteryProvisionAPI.provision(deviceInfo.deviceId, password, userToken)
+            val assetId = deviceProvisionAPI.provision(deviceInfo.modelName, deviceInfo.deviceId, password, userToken)
             val userName = deviceInfo.deviceId.lowercase(Locale("en"))
 
             deviceConnection?.sendOpenRemoteConfig(
@@ -63,8 +63,8 @@ class BatteryProvision(var deviceConnection: DeviceConnection?, var callbackChan
             sendProvisionDeviceStatus(true)
         } catch (e: ESPProviderException) {
             sendProvisionDeviceStatus(false, e.errorCode, e.errorMessage)
-        } catch (e: BatteryProvisionAPIError) {
-            val (errorCode, errorMessage) = mapBatteryProvisionAPIError(e)
+        } catch (e: DeviceProvisionAPIError) {
+            val (errorCode, errorMessage) = mapDeviceProvisionAPIError(e)
             sendProvisionDeviceStatus(false, errorCode, errorMessage)
         }
     }
@@ -85,16 +85,16 @@ class BatteryProvision(var deviceConnection: DeviceConnection?, var callbackChan
         }
     }
 
-    private fun mapBatteryProvisionAPIError(error: BatteryProvisionAPIError): Pair<ESPProviderErrorCode, String?> {
+    private fun mapDeviceProvisionAPIError(error: DeviceProvisionAPIError): Pair<ESPProviderErrorCode, String?> {
         return when (error) {
-            is BatteryProvisionAPIError.BusinessError,
-            is BatteryProvisionAPIError.UnknownError -> ESPProviderErrorCode.GENERIC_ERROR to null
+            is DeviceProvisionAPIError.BusinessError,
+            is DeviceProvisionAPIError.UnknownError -> ESPProviderErrorCode.GENERIC_ERROR to null
 
-            is BatteryProvisionAPIError.GenericError -> ESPProviderErrorCode.GENERIC_ERROR to error.error.localizedMessage
+            is DeviceProvisionAPIError.GenericError -> ESPProviderErrorCode.GENERIC_ERROR to error.error.localizedMessage
 
-            is BatteryProvisionAPIError.Unauthorized -> ESPProviderErrorCode.SECURITY_ERROR to null
+            is DeviceProvisionAPIError.Unauthorized -> ESPProviderErrorCode.SECURITY_ERROR to null
 
-            is BatteryProvisionAPIError.CommunicationError -> ESPProviderErrorCode.COMMUNICATION_ERROR to error.message
+            is DeviceProvisionAPIError.CommunicationError -> ESPProviderErrorCode.COMMUNICATION_ERROR to error.message
         }
     }
 
