@@ -2,10 +2,10 @@ package io.openremote.orlib.service.espprovision
 
 import com.espressif.provisioning.ESPDevice
 import com.espressif.provisioning.listeners.ResponseListener
-import io.openremote.orlib.service.espprovision.ORConfigChannelProtocol.Request
-import io.openremote.orlib.service.espprovision.ORConfigChannelProtocol.Response
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resumeWithException
+import io.openremote.orlib.service.espprovision.ORConfigChannelProtocol.Request
+import io.openremote.orlib.service.espprovision.ORConfigChannelProtocol.Response
 
 data class DeviceInfo(
     val deviceId: String,

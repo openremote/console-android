@@ -1,0 +1,84 @@
+/*
+ * Copyright 2025, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+syntax = "proto3";
+
+option java_package = "io.openremote.orlib.service.espprovision";
+option java_outer_classname = "ORConfigChannelProtocol";
+
+message Response {
+    message ResponseResult {
+        enum Result {
+            SUCCESS = 0;
+            REQUEST_UNKNOWN = 1;
+            INTERNAL_ERROR = 2;
+            ARGUMENT_ERROR = 3;
+        }
+        Result result = 1;
+    }
+    message OpenRemoteConfig {
+        enum Status {
+            SUCCESS = 0;
+            FAIL = 1;
+        }
+        Status status = 1;
+    }
+    message BackendConnectionStatus {
+        enum Status {
+            DISCONNECTED = 0;
+            CONNECTING = 1;
+            CONNECTED = 2;
+            FAILED = 3;
+        }
+        Status status = 1;
+    }
+    message DeviceInfo {
+        string device_id = 1;
+        string model_name = 3;
+    }
+    message ExitProvisioning {}
+    string id = 1;
+    ResponseResult result = 2;
+    oneof body {
+        DeviceInfo device_info = 6;
+        BackendConnectionStatus backend_connection_status = 7;
+        OpenRemoteConfig open_remote_config = 8;
+        ExitProvisioning exit_provisioning = 9;
+    }
+}
+
+message Request {
+    message DeviceInfo {};
+    message BackendConnectionStatus{};
+    message OpenRemoteConfig {
+        string mqtt_broker_url = 1;
+        string user = 2;
+        string mqtt_password = 3;
+        string realm = 4;
+        string asset_id = 5;
+    }
+    message ExitProvisioning {};
+    string id = 1;
+    oneof body {
+        DeviceInfo device_info = 6;
+        BackendConnectionStatus backend_connection_status = 7;
+        OpenRemoteConfig open_remote_config = 8;
+        ExitProvisioning exit_provisioning = 9;
+    }
+}

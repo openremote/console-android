@@ -1,0 +1,44 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    sourceCompatibility JavaVersion.VERSION_11
+    targetCompatibility JavaVersion.VERSION_11
+}
+
+apply plugin: 'com.google.protobuf'
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:4.33.2"
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    option 'lite'
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.protobuf:protobuf-javalite:4.33.2'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'build/generated/source/proto/main/java'
+        }
+        proto {
+            srcDir 'src/main/proto'
+        }
+    }
+}
+
+tasks.withType(ProcessResources) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
