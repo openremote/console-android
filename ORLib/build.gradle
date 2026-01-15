@@ -7,14 +7,14 @@ plugins {
 }
 
 android {
-    namespace 'io.openremote.orlib'
+    namespace = 'io.openremote.orlib'
 
     defaultConfig {
-        minSdkVersion 25
-        compileSdk 35
-        targetSdkVersion 35
-        versionCode 1
-        versionName version
+        minSdkVersion = 25
+        compileSdk = 35
+        targetSdkVersion = 35
+        versionCode = 1
+        versionName = version
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -35,7 +35,7 @@ android {
         }
     }
     buildFeatures {
-        viewBinding true
+        viewBinding = true
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -129,8 +129,8 @@ afterEvaluate {
             maven {
                 if (!version.endsWith('-LOCAL')) {
                     credentials {
-                        username findProperty("publishUsername")
-                        password findProperty("publishPassword")
+                        username = findProperty("publishUsername")
+                        password = findProperty("publishPassword")
                     }
                 }
                 url = version.endsWith('-LOCAL') ? layout.buildDirectory.dir('repo') : version.endsWith('-SNAPSHOT') ? findProperty("snapshotsRepoUrl") : findProperty("releasesRepoUrl")

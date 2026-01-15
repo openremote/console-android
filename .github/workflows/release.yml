@@ -45,9 +45,9 @@ jobs:
         id: release
         run: |
           if [ -n "$VERSION_OVERRIDE" ]; then
-            gradle release -Prelease.forceVersion=${VERSION_OVERRIDE}
+            ./gradlew release -Prelease.forceVersion=${VERSION_OVERRIDE}
           else
-            gradle release -Prelease.versionIncrementer=increment${VERSION_INCREMENT}
+            ./gradlew release -Prelease.versionIncrementer=increment${VERSION_INCREMENT}
           fi
         env:
           VERSION_INCREMENT: ${{ github.event.inputs.VERSION_INCREMENT }}
