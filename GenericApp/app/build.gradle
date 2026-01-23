@@ -8,12 +8,12 @@ plugins {
 
 android {
     defaultConfig {
-        applicationId "io.openremote.app"
-        minSdkVersion 25
-        compileSdk 35
-        targetSdkVersion 35
-        versionCode 44
-        versionName version
+        applicationId = "io.openremote.app"
+        minSdkVersion = 25
+        compileSdk = 35
+        targetSdkVersion = 35
+        versionCode = 44
+        versionName = version
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -42,19 +42,19 @@ android {
     }
 
     buildFeatures {
-        viewBinding true
+        viewBinding = true
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
         jvmTarget = '17'
     }
 
-    namespace 'io.openremote.app'
+    namespace = 'io.openremote.app'
 
     publishing {
         singleVariant('release') {
@@ -128,8 +128,8 @@ afterEvaluate {
             maven {
                 if (!version.endsWith('-LOCAL')) {
                     credentials {
-                        username findProperty("publishUsername")
-                        password findProperty("publishPassword")
+                        username = findProperty("publishUsername")
+                        password = findProperty("publishPassword")
                     }
                 }
                 url = version.endsWith('-LOCAL') ? layout.buildDirectory.dir('repo') : version.endsWith('-SNAPSHOT') ? findProperty("snapshotsRepoUrl") : findProperty("releasesRepoUrl")
