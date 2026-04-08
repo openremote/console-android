@@ -77,7 +77,7 @@ dependencies {
 
     implementation 'com.github.iammohdzaki:Password-Generator:0.6'
 
-    api project(':protobuf')
+    api project(':orlib-protobuf')
 }
 
 
