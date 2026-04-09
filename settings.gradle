@@ -5,3 +5,5 @@ fileTree(dir: rootDir, include: "**/build.gradle")
         .each {
     include it.parent.replace(rootDir.canonicalPath, "").replace("\\", ":").replace("/", ":")
 }
+
+project(':protobuf').name = 'orlib-protobuf'
