@@ -967,7 +967,8 @@ open class OrMainActivity : Activity() {
             val action = data.getString("action")
             if (espProvisionProvider == null) {
                 if (baseUrl != null) {
-                    espProvisionProvider = ESPProvisionProvider(activity, URL(URL(baseUrl), "/api/master"))
+                    val realm = getESPProvisionRealm()
+                    espProvisionProvider = ESPProvisionProvider(activity, getESPProvisionApiURL(baseUrl!!, realm))
                 } else {
                     espProvisionProvider = ESPProvisionProvider(activity)
                 }
@@ -1060,6 +1061,27 @@ open class OrMainActivity : Activity() {
                     }
                 }
             }
+        }
+
+        private fun getESPProvisionRealm(): String {
+            return baseUrl
+                ?.let { Uri.parse(it).getQueryParameter(ORConstants.REALM_KEY) }
+                ?.takeIf { it.isNotBlank() }
+                ?: sharedPreferences.getString(ORConstants.REALM_KEY, null)
+                    ?.takeIf { it.isNotBlank() }
+                ?: "master"
+        }
+
+        private fun getESPProvisionApiURL(baseUrl: String, realm: String): URL {
+            val appUri = Uri.parse(baseUrl)
+            val apiUri = Uri.Builder()
+                .scheme(appUri.scheme)
+                .encodedAuthority(appUri.encodedAuthority)
+                .appendPath("api")
+                .appendPath(realm)
+                .build()
+
+            return URL(apiUri.toString())
         }
     }
 
