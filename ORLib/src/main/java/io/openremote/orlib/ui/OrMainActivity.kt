@@ -1045,9 +1045,9 @@ open class OrMainActivity : Activity() {
                 action.equals(ESPProvisionProviderActions.PROVISION_DEVICE) -> {
                     val userToken = data.optString("userToken")
                     if (!userToken.isNullOrEmpty()) {
-                        val apiURL = baseUrl?.let { URL(URL(it), "/api/master") }
-                        if (apiURL != null) {
-                            espProvisionProvider?.provisionDevice(apiURL, userToken)
+                        if (baseUrl != null) {
+                            val realm = getESPProvisionRealm()
+                            espProvisionProvider?.provisionDevice(getESPProvisionApiURL(baseUrl!!, realm), userToken)
                         } else {
                             espProvisionProvider?.provisionDevice(userToken = userToken)
                         }
@@ -1061,6 +1061,27 @@ open class OrMainActivity : Activity() {
                     }
                 }
             }
+        }
+
+        private fun getESPProvisionRealm(): String {
+            return baseUrl
+                ?.let { Uri.parse(it).getQueryParameter(ORConstants.REALM_KEY) }
+                ?.takeIf { it.isNotBlank() }
+                ?: sharedPreferences.getString(ORConstants.REALM_KEY, null)
+                    ?.takeIf { it.isNotBlank() }
+                ?: "master"
+        }
+
+        private fun getESPProvisionApiURL(baseUrl: String, realm: String): URL {
+            val appUri = Uri.parse(baseUrl)
+            val apiUri = Uri.Builder()
+                .scheme(appUri.scheme)
+                .encodedAuthority(appUri.encodedAuthority)
+                .appendPath("api")
+                .appendPath(realm)
+                .build()
+
+            return URL(apiUri.toString())
         }
     }
 
