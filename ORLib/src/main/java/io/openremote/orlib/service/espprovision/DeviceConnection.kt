@@ -101,6 +101,7 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         mqttBrokerUrl: String,
         mqttUser: String,
         mqttPassword: String,
+        realm: String,
         assetId: String,
         properties: Map<String, String> = emptyMap()
     ) {
@@ -115,6 +116,7 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
                 mqttBrokerUrl = mqttBrokerUrl,
                 mqttUser = mqttUser,
                 mqttPassword = mqttPassword,
+                realm = realm,
                 assetId = assetId,
                 properties = properties
             )
