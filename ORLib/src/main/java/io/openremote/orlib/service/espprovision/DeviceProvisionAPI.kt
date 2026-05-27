@@ -13,8 +13,13 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 interface DeviceProvisionAPI {
-    suspend fun provision(modelName: String, deviceId: String, password: String, token: String): String
+    suspend fun provision(modelName: String, deviceId: String, password: String, token: String): ProvisionResult
 }
+
+data class ProvisionResult(
+    val assetId: String,
+    val properties: Map<String, String>
+)
 
 class DeviceProvisionAPIREST(private val apiURL: URL) : DeviceProvisionAPI {
 
@@ -22,7 +27,7 @@ class DeviceProvisionAPIREST(private val apiURL: URL) : DeviceProvisionAPI {
         private const val TAG = "DeviceProvisionAPIREST"
     }
 
-    override suspend fun provision(modelName: String, deviceId: String, password: String, token: String): String = withContext(Dispatchers.IO) {
+    override suspend fun provision(modelName: String, deviceId: String, password: String, token: String): ProvisionResult = withContext(Dispatchers.IO) {
         Log.d(ESPProvisionProvider.TAG, "apiURL $apiURL")
         val uri = Uri.parse(apiURL.toString()).buildUpon()
             .appendPath("rest")
@@ -65,7 +70,15 @@ class DeviceProvisionAPIREST(private val apiURL: URL) : DeviceProvisionAPI {
             }
 
             val json = JSONObject(responseText)
-            return@withContext json.getString("assetId")
+            val assetId = json.getString("assetId")
+            val properties = mutableMapOf<String, String>()
+            if (json.has("properties") && !json.isNull("properties")) {
+                val propertiesJson = json.getJSONObject("properties")
+                propertiesJson.keys().forEach { key ->
+                    properties[key] = propertiesJson.getString(key)
+                }
+            }
+            return@withContext ProvisionResult(assetId = assetId, properties = properties)
         } catch (e: DeviceProvisionAPIError) {
             throw e
         } catch (e: Exception) {

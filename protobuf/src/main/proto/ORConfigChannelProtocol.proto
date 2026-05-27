@@ -72,6 +72,7 @@ message Request {
         string mqtt_password = 3;
         string realm = 4;
         string asset_id = 5;
+        map<string, string> properties = 6;
     }
     message ExitProvisioning {};
     string id = 1;

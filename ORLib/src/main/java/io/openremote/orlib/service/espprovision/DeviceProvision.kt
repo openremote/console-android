@@ -34,14 +34,15 @@ class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChann
 
             val password = generatePassword()
 
-            val assetId = deviceProvisionAPI.provision(deviceInfo.modelName, deviceInfo.deviceId, password, userToken)
+            val result = deviceProvisionAPI.provision(deviceInfo.modelName, deviceInfo.deviceId, password, userToken)
             val userName = deviceInfo.deviceId.lowercase(Locale("en"))
 
             deviceConnection?.sendOpenRemoteConfig(
                 mqttBrokerUrl = mqttURL,
                 mqttUser = userName,
                 mqttPassword = password,
-                assetId = assetId
+                assetId = result.assetId,
+                properties = result.properties
             )
 
             var status = BackendConnectionStatus.CONNECTING
