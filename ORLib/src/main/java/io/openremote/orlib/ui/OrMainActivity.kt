@@ -966,11 +966,7 @@ open class OrMainActivity : Activity() {
         private fun handleESPProvisionProviderMessage(data: JSONObject) {
             val action = data.getString("action")
             if (espProvisionProvider == null) {
-                if (baseUrl != null) {
-                    espProvisionProvider = ESPProvisionProvider(activity, URL(URL(baseUrl), "/api/master"))
-                } else {
-                    espProvisionProvider = ESPProvisionProvider(activity)
-                }
+                espProvisionProvider = ESPProvisionProvider(activity)
             }
             when {
                 action.equals(ESPProvisionProviderActions.PROVIDER_INIT, ignoreCase = true) -> {
@@ -1049,7 +1045,12 @@ open class OrMainActivity : Activity() {
                 action.equals(ESPProvisionProviderActions.PROVISION_DEVICE) -> {
                     val userToken = data.optString("userToken")
                     if (!userToken.isNullOrEmpty()) {
-                        espProvisionProvider?.provisionDevice(userToken)
+                        if (baseUrl != null) {
+                            val realm = getESPProvisionRealm()
+                            espProvisionProvider?.provisionDevice(getESPProvisionApiURL(baseUrl!!, realm), userToken)
+                        } else {
+                            espProvisionProvider?.provisionDevice(userToken = userToken)
+                        }
                     } else {
                         val payload: Map<String, Any> = hashMapOf(
                             "action" to action,
@@ -1060,6 +1061,27 @@ open class OrMainActivity : Activity() {
                     }
                 }
             }
+        }
+
+        private fun getESPProvisionRealm(): String {
+            return baseUrl
+                ?.let { Uri.parse(it).getQueryParameter(ORConstants.REALM_KEY) }
+                ?.takeIf { it.isNotBlank() }
+                ?: sharedPreferences.getString(ORConstants.REALM_KEY, null)
+                    ?.takeIf { it.isNotBlank() }
+                ?: "master"
+        }
+
+        private fun getESPProvisionApiURL(baseUrl: String, realm: String): URL {
+            val appUri = Uri.parse(baseUrl)
+            val apiUri = Uri.Builder()
+                .scheme(appUri.scheme)
+                .encodedAuthority(appUri.encodedAuthority)
+                .appendPath("api")
+                .appendPath(realm)
+                .build()
+
+            return URL(apiUri.toString())
         }
     }
 
