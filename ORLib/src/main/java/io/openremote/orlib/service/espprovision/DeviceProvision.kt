@@ -34,7 +34,7 @@ class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChann
 
             val password = generatePassword()
 
-            val assetId = deviceProvisionAPI.provision(apiURL, deviceInfo.modelName, deviceInfo.deviceId, password, userToken)
+            val result = deviceProvisionAPI.provision(apiURL, deviceInfo.modelName, deviceInfo.deviceId, password, userToken)
             val userName = deviceInfo.deviceId.lowercase(Locale("en"))
 
             deviceConnection?.sendOpenRemoteConfig(
@@ -42,7 +42,8 @@ class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChann
                 mqttUser = userName,
                 mqttPassword = password,
                 realm = realm,
-                assetId = assetId
+                assetId = result.assetId,
+                properties = result.properties
             )
 
             var status = BackendConnectionStatus.CONNECTING

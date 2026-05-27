@@ -102,7 +102,8 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         mqttUser: String,
         mqttPassword: String,
         realm: String,
-        assetId: String
+        assetId: String,
+        properties: Map<String, String> = emptyMap()
     ) {
         if (!isConnected) {
             throw ESPProviderException(
@@ -116,7 +117,8 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
                 mqttUser = mqttUser,
                 mqttPassword = mqttPassword,
                 realm = realm,
-                assetId = assetId
+                assetId = assetId,
+                properties = properties
             )
         } catch (e: Exception) {
             throw ESPProviderException(

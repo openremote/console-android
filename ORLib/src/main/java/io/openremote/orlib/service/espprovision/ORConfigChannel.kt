@@ -47,7 +47,8 @@ class ORConfigChannel(private val device: ESPDevice) {
         mqttUser: String,
         mqttPassword: String,
         realm: String = "master",
-        assetId: String
+        assetId: String,
+        properties: Map<String, String> = emptyMap()
     ) {
         val config = Request.OpenRemoteConfig.newBuilder()
             .setMqttBrokerUrl(mqttBrokerUrl)
@@ -55,6 +56,7 @@ class ORConfigChannel(private val device: ESPDevice) {
             .setMqttPassword(mqttPassword)
             .setAssetId(assetId)
             .setRealm(realm)
+            .putAllProperties(properties)
             .build()
 
         val request = Request.newBuilder()
