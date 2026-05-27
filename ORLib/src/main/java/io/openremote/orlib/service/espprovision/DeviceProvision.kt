@@ -23,7 +23,7 @@ class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChann
         deviceProvisionAPI = DeviceProvisionAPIREST()
     }
 
-    suspend fun provision(apiURL: URL, userToken: String) {
+    suspend fun provision(apiURL: URL, userToken: String, realm: String = "master") {
         if (deviceConnection == null || !deviceConnection!!.isConnected) {
             sendProvisionDeviceStatus(false, ESPProviderErrorCode.NOT_CONNECTED, "No connection established to device")
         }
@@ -41,6 +41,7 @@ class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChann
                 mqttBrokerUrl = "mqtts://${apiURL.host ?: "localhost"}:8883",
                 mqttUser = userName,
                 mqttPassword = password,
+                realm = realm,
                 assetId = assetId
             )
 

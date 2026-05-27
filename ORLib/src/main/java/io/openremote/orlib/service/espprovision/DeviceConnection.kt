@@ -101,6 +101,7 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
         mqttBrokerUrl: String,
         mqttUser: String,
         mqttPassword: String,
+        realm: String,
         assetId: String
     ) {
         if (!isConnected) {
@@ -114,6 +115,7 @@ class DeviceConnection(val deviceRegistry: DeviceRegistry, var callbackChannel: 
                 mqttBrokerUrl = mqttBrokerUrl,
                 mqttUser = mqttUser,
                 mqttPassword = mqttPassword,
+                realm = realm,
                 assetId = assetId
             )
         } catch (e: Exception) {

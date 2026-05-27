@@ -269,10 +269,10 @@ class ESPProvisionProvider(val context: Context) {
 
     // OR Configuration
 
-    fun provisionDevice(apiURL: URL = URL("http://localhost:8080/api/master"), userToken: String) {
+    fun provisionDevice(apiURL: URL = URL("http://localhost:8080/api/master"), userToken: String, realm: String = "master") {
         val deviceProvision = DeviceProvision(deviceConnection, deviceRegistry.callbackChannel)
         CoroutineScope(Dispatchers.IO).launch {
-            deviceProvision.provision(apiURL, userToken)
+            deviceProvision.provision(apiURL, userToken, realm)
         }
     }
 
