@@ -1047,7 +1047,7 @@ open class OrMainActivity : Activity() {
                     if (!userToken.isNullOrEmpty()) {
                         if (baseUrl != null) {
                             val realm = getESPProvisionRealm()
-                            espProvisionProvider?.provisionDevice(getESPProvisionApiURL(baseUrl!!, realm), userToken)
+                            espProvisionProvider?.provisionDevice(getESPProvisionApiURL(baseUrl!!, realm), userToken, realm)
                         } else {
                             espProvisionProvider?.provisionDevice(userToken = userToken)
                         }
