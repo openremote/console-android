@@ -14,16 +14,16 @@ import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChannel: CallbackChannel?, var apiURL: URL) {
+class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChannel: CallbackChannel?) {
     var deviceProvisionAPI: DeviceProvisionAPI
 
     var backendConnectionTimeoutMillis = 60_000
 
     init {
-        deviceProvisionAPI = DeviceProvisionAPIREST(apiURL)
+        deviceProvisionAPI = DeviceProvisionAPIREST()
     }
 
-    suspend fun provision(userToken: String) {
+    suspend fun provision(apiURL: URL, userToken: String) {
         if (deviceConnection == null || !deviceConnection!!.isConnected) {
             sendProvisionDeviceStatus(false, ESPProviderErrorCode.NOT_CONNECTED, "No connection established to device")
         }
@@ -34,11 +34,11 @@ class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChann
 
             val password = generatePassword()
 
-            val assetId = deviceProvisionAPI.provision(deviceInfo.modelName, deviceInfo.deviceId, password, userToken)
+            val assetId = deviceProvisionAPI.provision(apiURL, deviceInfo.modelName, deviceInfo.deviceId, password, userToken)
             val userName = deviceInfo.deviceId.lowercase(Locale("en"))
 
             deviceConnection?.sendOpenRemoteConfig(
-                mqttBrokerUrl = mqttURL,
+                mqttBrokerUrl = "mqtts://${apiURL.host ?: "localhost"}:8883",
                 mqttUser = userName,
                 mqttPassword = password,
                 assetId = assetId
@@ -115,10 +115,4 @@ class DeviceProvision(var deviceConnection: DeviceConnection?, var callbackChann
             .build()
             .generate()
     }
-
-    private val mqttURL: String
-        get() {
-            // TODO: is this OK or do we want to get the mqtt url from the server?
-            return "mqtts://${apiURL.host ?: "localhost"}:8883"
-        }
 }

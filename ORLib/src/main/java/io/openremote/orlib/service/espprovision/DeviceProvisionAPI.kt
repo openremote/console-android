@@ -13,16 +13,16 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 interface DeviceProvisionAPI {
-    suspend fun provision(modelName: String, deviceId: String, password: String, token: String): String
+    suspend fun provision(apiURL: URL, modelName: String, deviceId: String, password: String, token: String): String
 }
 
-class DeviceProvisionAPIREST(private val apiURL: URL) : DeviceProvisionAPI {
+class DeviceProvisionAPIREST() : DeviceProvisionAPI {
 
     companion object {
         private const val TAG = "DeviceProvisionAPIREST"
     }
 
-    override suspend fun provision(modelName: String, deviceId: String, password: String, token: String): String = withContext(Dispatchers.IO) {
+    override suspend fun provision(apiURL: URL, modelName: String, deviceId: String, password: String, token: String): String = withContext(Dispatchers.IO) {
         Log.d(ESPProvisionProvider.TAG, "apiURL $apiURL")
         val uri = Uri.parse(apiURL.toString()).buildUpon()
             .appendPath("rest")

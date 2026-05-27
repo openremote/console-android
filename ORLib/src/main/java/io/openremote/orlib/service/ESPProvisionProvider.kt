@@ -38,7 +38,7 @@ object ESPProvisionProviderActions {
     const val EXIT_PROVISIONING = "EXIT_PROVISIONING"
 }
 
-class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://localhost:8080/api/master")) {
+class ESPProvisionProvider(val context: Context) {
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     val deviceRegistry: DeviceRegistry
     var deviceConnection: DeviceConnection? = null
@@ -269,10 +269,10 @@ class ESPProvisionProvider(val context: Context, val apiURL: URL = URL("http://l
 
     // OR Configuration
 
-    fun provisionDevice(userToken: String) {
-        val deviceProvision = DeviceProvision(deviceConnection, deviceRegistry.callbackChannel, apiURL)
+    fun provisionDevice(apiURL: URL = URL("http://localhost:8080/api/master"), userToken: String) {
+        val deviceProvision = DeviceProvision(deviceConnection, deviceRegistry.callbackChannel)
         CoroutineScope(Dispatchers.IO).launch {
-            deviceProvision.provision(userToken)
+            deviceProvision.provision(apiURL, userToken)
         }
     }
 

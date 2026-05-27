@@ -966,11 +966,7 @@ open class OrMainActivity : Activity() {
         private fun handleESPProvisionProviderMessage(data: JSONObject) {
             val action = data.getString("action")
             if (espProvisionProvider == null) {
-                if (baseUrl != null) {
-                    espProvisionProvider = ESPProvisionProvider(activity, URL(URL(baseUrl), "/api/master"))
-                } else {
-                    espProvisionProvider = ESPProvisionProvider(activity)
-                }
+                espProvisionProvider = ESPProvisionProvider(activity)
             }
             when {
                 action.equals(ESPProvisionProviderActions.PROVIDER_INIT, ignoreCase = true) -> {
@@ -1049,7 +1045,12 @@ open class OrMainActivity : Activity() {
                 action.equals(ESPProvisionProviderActions.PROVISION_DEVICE) -> {
                     val userToken = data.optString("userToken")
                     if (!userToken.isNullOrEmpty()) {
-                        espProvisionProvider?.provisionDevice(userToken)
+                        val apiURL = baseUrl?.let { URL(URL(it), "/api/master") }
+                        if (apiURL != null) {
+                            espProvisionProvider?.provisionDevice(apiURL, userToken)
+                        } else {
+                            espProvisionProvider?.provisionDevice(userToken = userToken)
+                        }
                     } else {
                         val payload: Map<String, Any> = hashMapOf(
                             "action" to action,
