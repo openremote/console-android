@@ -13,6 +13,7 @@ import android.os.Handler
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import io.openremote.orlib.R
+import io.openremote.orlib.ui.PermissionDisclosures
 import java.util.*
 
 class BleProvider(val context: Context) {
@@ -465,22 +466,34 @@ class BleProvider(val context: Context) {
 
 
     private fun requestPermissions(activity: Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ActivityCompat.requestPermissions(
-                activity,
-                arrayOf(
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT
-                ),
-                BLUETOOTH_PERMISSION_REQUEST_CODE
-            )
+        val message = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            R.string.bluetooth_disclosure_body
         } else {
-            ActivityCompat.requestPermissions(
-                activity,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                BLUETOOTH_PERMISSION_REQUEST_CODE
-            )
+            R.string.bluetooth_location_disclosure_body
         }
+        PermissionDisclosures.show(
+            activity,
+            R.string.bluetooth_disclosure_title,
+            message,
+            onAccept = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        arrayOf(
+                            Manifest.permission.BLUETOOTH_SCAN,
+                            Manifest.permission.BLUETOOTH_CONNECT
+                        ),
+                        BLUETOOTH_PERMISSION_REQUEST_CODE
+                    )
+                } else {
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                        BLUETOOTH_PERMISSION_REQUEST_CODE
+                    )
+                }
+            }
+        )
     }
 
     private fun hasPermission() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
