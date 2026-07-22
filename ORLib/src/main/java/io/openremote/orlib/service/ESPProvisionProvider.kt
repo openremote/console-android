@@ -13,6 +13,7 @@ import android.util.Log
 import androidx.annotation.VisibleForTesting
 import androidx.core.app.ActivityCompat
 import io.openremote.orlib.R
+import io.openremote.orlib.ui.PermissionDisclosures
 import io.openremote.orlib.service.espprovision.CallbackChannel
 import io.openremote.orlib.service.espprovision.DeviceConnection
 import io.openremote.orlib.service.espprovision.DeviceProvision
@@ -277,22 +278,34 @@ class ESPProvisionProvider(val context: Context) {
     }
 
     private fun requestPermissions(activity: Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ActivityCompat.requestPermissions(
-                activity,
-                arrayOf(
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT
-                ),
-                ESPProvisionProvider.Companion.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE
-            )
+        val message = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            R.string.bluetooth_disclosure_body
         } else {
-            ActivityCompat.requestPermissions(
-                activity,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                ESPProvisionProvider.Companion.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE
-            )
+            R.string.bluetooth_location_disclosure_body
         }
+        PermissionDisclosures.show(
+            activity,
+            R.string.bluetooth_disclosure_title,
+            message,
+            onAccept = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        arrayOf(
+                            Manifest.permission.BLUETOOTH_SCAN,
+                            Manifest.permission.BLUETOOTH_CONNECT
+                        ),
+                        ESPProvisionProvider.Companion.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE
+                    )
+                } else {
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                        ESPProvisionProvider.Companion.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE
+                    )
+                }
+            }
+        )
     }
 
     private fun hasPermission() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

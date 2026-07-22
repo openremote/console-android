@@ -8,12 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Looper
-import androidx.appcompat.app.AlertDialog
-import androidx.core.app.ActivityCompat
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.android.gms.location.*
 import io.openremote.orlib.ORConstants
 import io.openremote.orlib.R
+import io.openremote.orlib.ui.PermissionDisclosures
 import java.net.URL
 import java.util.*
 import java.util.logging.Level
@@ -185,6 +184,7 @@ class GeofenceProvider(val context: Context) {
 
     private var enableCallback: GeofenceCallback? = null
     private var locationCallback: GeofenceCallback? = null
+    private var backgroundDisclosureAsked = false
 
     fun initialize(): Map<String, Any> {
         val sharedPreferences =
@@ -372,34 +372,56 @@ class GeofenceProvider(val context: Context) {
     private fun registerPermissions(activity: Activity) {
         LOG.info("Requesting geofence permissions")
         if (context.checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                if (ActivityCompat.shouldShowRequestPermissionRationale(
-                        activity,
-                        ACCESS_BACKGROUND_LOCATION
-                    )
-                ) {
-                    AlertDialog.Builder(activity)
-                        .setIcon(R.mipmap.ic_launcher)
-                        .setTitle(R.string.location_background_disabled_title)
-                        .setMessage(R.string.background_location_alert_body)
-                        .setNegativeButton(R.string.no, null)
-                        .setPositiveButton(R.string.yes) { dialog, which ->
-                            activity.requestPermissions(
-                                arrayOf(
-                                    ACCESS_BACKGROUND_LOCATION
-                                ),
-                                locationResponseCode
-                            )
-                        }
-                        .show()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q &&
+                context.checkSelfPermission(ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestBackgroundLocation(activity)
+            } else {
+                enableCallback?.let {
+                    onEnable(it)
+                    enableCallback = null
                 }
             }
         } else {
-            activity.requestPermissions(
-                arrayOf(ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION),
-                locationResponseCode
+            PermissionDisclosures.show(
+                activity,
+                R.string.location_disclosure_title,
+                R.string.location_disclosure_body,
+                onAccept = {
+                    activity.requestPermissions(
+                        arrayOf(ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION),
+                        locationResponseCode
+                    )
+                },
+                onDecline = {
+                    enableCallback?.let {
+                        onEnable(it)
+                        enableCallback = null
+                    }
+                }
             )
         }
+    }
+
+    private fun requestBackgroundLocation(activity: Activity) {
+        backgroundDisclosureAsked = true
+        PermissionDisclosures.show(
+            activity,
+            R.string.background_location_disclosure_title,
+            R.string.background_location_disclosure_body,
+            onAccept = {
+                activity.requestPermissions(
+                    arrayOf(ACCESS_BACKGROUND_LOCATION),
+                    locationResponseCode
+                )
+            },
+            onDecline = {
+                enableCallback?.let {
+                    onEnable(it)
+                    enableCallback = null
+                }
+            }
+        )
     }
 
     fun onRequestPermissionsResult(activity: Activity) {
@@ -407,31 +429,12 @@ class GeofenceProvider(val context: Context) {
             onEnable(enableCallback!!)
             enableCallback = null
         }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            if (context.checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                context.checkSelfPermission(ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED
-            ) {
-                if (ActivityCompat.shouldShowRequestPermissionRationale(
-                        activity,
-                        ACCESS_BACKGROUND_LOCATION
-                    )
-                ) {
-                    AlertDialog.Builder(activity)
-                        .setIcon(R.mipmap.ic_launcher)
-                        .setTitle(R.string.background_location_alert_title)
-                        .setMessage(R.string.background_location_alert_body)
-                        .setNegativeButton(R.string.no, null)
-                        .setPositiveButton(R.string.yes) { dialog, which ->
-                            activity.requestPermissions(
-                                arrayOf(
-                                    ACCESS_BACKGROUND_LOCATION
-                                ),
-                                locationResponseCode
-                            )
-                        }
-                        .show()
-                }
-            }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q &&
+            context.checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+            context.checkSelfPermission(ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            !backgroundDisclosureAsked
+        ) {
+            requestBackgroundLocation(activity)
         }
     }
 

@@ -22,7 +22,6 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import com.fasterxml.jackson.core.JsonProcessingException
@@ -58,6 +57,7 @@ open class OrMainActivity : Activity() {
     private val locationResponseCode = 555
     private var locationCallback: GeolocationPermissions.Callback? = null;
     private var locationOrigin: String? = null;
+    private var pendingDownload: (() -> Unit)? = null
 
     private val pushResponseCode = 556
 
@@ -346,12 +346,23 @@ open class OrMainActivity : Activity() {
                     } else {
                         locationCallback = callback
                         locationOrigin = origin
-                        requestPermissions(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ),
-                            locationResponseCode
+                        PermissionDisclosures.show(
+                            this@OrMainActivity,
+                            R.string.location_disclosure_title,
+                            R.string.webview_location_disclosure_body,
+                            onAccept = {
+                                requestPermissions(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    ),
+                                    locationResponseCode
+                                )
+                            },
+                            onDecline = {
+                                locationCallback?.invoke(locationOrigin, false, false)
+                                locationCallback = null
+                            }
                         )
                     }
                 }
@@ -388,46 +399,66 @@ open class OrMainActivity : Activity() {
 
             setDownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
                 val writePermission = Manifest.permission.WRITE_EXTERNAL_STORAGE
-                if (ContextCompat.checkSelfPermission(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+                    ContextCompat.checkSelfPermission(
                         this@OrMainActivity,
                         writePermission
-                    ) != PackageManager.PERMISSION_GRANTED
+                    ) == PackageManager.PERMISSION_GRANTED
                 ) {
-                    // Write permission has not been granted yet, request it.
-                    requestPermissions(
-                        arrayOf(writePermission),
-                        ORConstants.WRITE_PERMISSION_FOR_DOWNLOAD
-                    )
+                    startDownload(url, userAgent, contentDisposition, mimetype)
                 } else {
-                    val request = DownloadManager.Request(Uri.parse(url))
-                    request.setMimeType(mimetype)
-                    //------------------------COOKIE!!------------------------
-                    val cookies = CookieManager.getInstance().getCookie(url)
-                    request.addRequestHeader("cookie", cookies)
-                    //------------------------COOKIE!!------------------------
-                    request.addRequestHeader("User-Agent", userAgent)
-                    request.setDescription("Downloading file...")
-                    request.setTitle(
-                        URLUtil.guessFileName(
-                            url,
-                            contentDisposition,
-                            mimetype
-                        )
+                    pendingDownload = { startDownload(url, userAgent, contentDisposition, mimetype) }
+                    PermissionDisclosures.show(
+                        this@OrMainActivity,
+                        R.string.storage_disclosure_title,
+                        R.string.storage_disclosure_body,
+                        onAccept = {
+                            requestPermissions(
+                                arrayOf(writePermission),
+                                ORConstants.WRITE_PERMISSION_FOR_DOWNLOAD
+                            )
+                        },
+                        onDecline = {
+                            pendingDownload = null
+                        }
                     )
-                    request.allowScanningByMediaScanner()
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    request.setDestinationInExternalPublicDir(
-                        Environment.DIRECTORY_DOWNLOADS,
-                        URLUtil.guessFileName(url, contentDisposition, mimetype)
-                    )
-                    val dm =
-                        getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-                    Toast.makeText(applicationContext, R.string.downloading_file, Toast.LENGTH_LONG)
-                        .show()
-                    dm.enqueue(request)
                 }
             }
         }
+    }
+
+    private fun startDownload(
+        url: String,
+        userAgent: String,
+        contentDisposition: String,
+        mimetype: String
+    ) {
+        val request = DownloadManager.Request(Uri.parse(url))
+        request.setMimeType(mimetype)
+        //------------------------COOKIE!!------------------------
+        val cookies = CookieManager.getInstance().getCookie(url)
+        request.addRequestHeader("cookie", cookies)
+        //------------------------COOKIE!!------------------------
+        request.addRequestHeader("User-Agent", userAgent)
+        request.setDescription("Downloading file...")
+        request.setTitle(
+            URLUtil.guessFileName(
+                url,
+                contentDisposition,
+                mimetype
+            )
+        )
+        request.allowScanningByMediaScanner()
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        request.setDestinationInExternalPublicDir(
+            Environment.DIRECTORY_DOWNLOADS,
+            URLUtil.guessFileName(url, contentDisposition, mimetype)
+        )
+        val dm =
+            getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+        Toast.makeText(applicationContext, R.string.downloading_file, Toast.LENGTH_LONG)
+            .show()
+        dm.enqueue(request)
     }
 
     private fun handleError(
@@ -493,15 +524,18 @@ open class OrMainActivity : Activity() {
     ) {
         if (requestCode == ORConstants.WRITE_PERMISSION_FOR_DOWNLOAD) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(applicationContext, R.string.downloading_file, Toast.LENGTH_LONG)
-                    .show()
+                pendingDownload?.invoke()
             }
+            pendingDownload = null
         } else if (requestCode == GeofenceProvider.locationResponseCode) {
             geofenceProvider?.onRequestPermissionsResult(this)
         } else if (requestCode == locationResponseCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 locationCallback?.invoke(locationOrigin, true, false)
+            } else {
+                locationCallback?.invoke(locationOrigin, false, false)
             }
+            locationCallback = null
         } else if (requestCode == BleProvider.BLUETOOTH_PERMISSION_REQUEST_CODE || requestCode == BleProvider.ENABLE_BLUETOOTH_REQUEST_CODE) {
             bleProvider?.onRequestPermissionsResult(
                 this,
@@ -516,16 +550,16 @@ open class OrMainActivity : Activity() {
         } else if (requestCode == ESPProvisionProvider.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE || requestCode == ESPProvisionProvider.ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE) {
             espProvisionProvider?.onRequestPermissionsResult(this, requestCode, prefix)
         } else if (requestCode == pushResponseCode) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                notifyClient(
-                    hashMapOf(
-                        "action" to "PROVIDER_ENABLE",
-                        "provider" to "push",
-                        "hasPermission" to true,
-                        "success" to true
-                    )
+            val granted =
+                grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            notifyClient(
+                hashMapOf(
+                    "action" to "PROVIDER_ENABLE",
+                    "provider" to "push",
+                    "hasPermission" to granted,
+                    "success" to true
                 )
-            }
+            )
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         }
@@ -701,50 +735,33 @@ open class OrMainActivity : Activity() {
                                 Manifest.permission.POST_NOTIFICATIONS
                             ) != PackageManager.PERMISSION_GRANTED
                         ) {
-                            if (ActivityCompat.shouldShowRequestPermissionRationale(
-                                    this@OrMainActivity,
-                                    Manifest.permission.POST_NOTIFICATIONS
-                                )
-                            ) {
-                                runOnUiThread {
-                                    AlertDialog.Builder(this@OrMainActivity)
-                                        .setTitle(R.string.push_notification_alert_title)
-                                        .setMessage(R.string.push_notification_alert_message)
-                                        .setIcon(R.drawable.ic_notification)
-                                        .setCancelable(false)
-                                        .setPositiveButton(
-                                            R.string.yes
-                                        ) { dialog, which ->
-                                            requestPermissions(
-                                                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                                                pushResponseCode
-                                            )
-                                        }
-                                        .setNegativeButton(
-                                            R.string.no
-                                        ) { dialog, which ->
-                                            sharedPreferences.edit()
-                                                .putBoolean(
-                                                    ORConstants.PUSH_PROVIDER_DISABLED_KEY,
-                                                    true
-                                                )
-                                                .apply()
-                                            notifyClient(
-                                                hashMapOf(
-                                                    "action" to "PROVIDER_ENABLE",
-                                                    "provider" to "push",
-                                                    "hasPermission" to false,
-                                                    "success" to true
-                                                )
-                                            )
-                                        }.show()
-                                    }
-                            } else {
-                                requestPermissions(
-                                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                                    pushResponseCode
-                                )
-                            }
+                            PermissionDisclosures.show(
+                                this@OrMainActivity,
+                                R.string.push_notification_disclosure_title,
+                                R.string.push_notification_disclosure_body,
+                                onAccept = {
+                                    requestPermissions(
+                                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                        pushResponseCode
+                                    )
+                                },
+                                onDecline = {
+                                    sharedPreferences.edit()
+                                        .putBoolean(
+                                            ORConstants.PUSH_PROVIDER_DISABLED_KEY,
+                                            true
+                                        )
+                                        .apply()
+                                    notifyClient(
+                                        hashMapOf(
+                                            "action" to "PROVIDER_ENABLE",
+                                            "provider" to "push",
+                                            "hasPermission" to false,
+                                            "success" to true
+                                        )
+                                    )
+                                }
+                            )
                         } else {
                             val mgr =
                                 this@OrMainActivity.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
