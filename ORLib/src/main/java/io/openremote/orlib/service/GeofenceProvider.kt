@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Looper
-import androidx.core.app.ActivityCompat
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.android.gms.location.*
 import io.openremote.orlib.ORConstants
