@@ -1,6 +1,7 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
     id 'com.google.gms.google-services'
     id 'maven-publish'
     id 'signing'
@@ -9,9 +10,9 @@ plugins {
 android {
     defaultConfig {
         applicationId = "io.openremote.app"
-        minSdkVersion = 25
-        compileSdk = 35
-        targetSdkVersion = 35
+        minSdk = 25
+        compileSdk = 36
+        targetSdk = 36
         versionCode = 44
         versionName = version
 
@@ -43,15 +44,12 @@ android {
 
     buildFeatures {
         viewBinding = true
+        resValues = true
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = '17'
     }
 
     namespace = 'io.openremote.app'
@@ -62,24 +60,35 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation 'androidx.core:core-ktx:1.16.0'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.core:core-ktx:1.18.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.preference:preference-ktx:1.2.1'
-    implementation "com.google.android.gms:play-services-location:21.3.0"
-    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1"
-    implementation platform('com.google.firebase:firebase-bom:33.12.0')
-    implementation 'com.google.firebase:firebase-messaging-ktx'
-    implementation 'com.google.android.material:material:1.12.0'
+    implementation "com.google.android.gms:play-services-location:21.4.0"
+    // Pinned below 2.20: 2.20+ emits MethodHandle.invokeExact value-class bytecode
+    // that D8 rejects for minSdk < 26 (this project is minSdk 25). `strictly` makes a
+    // transitive bump to >=2.20 fail resolution loudly instead of silently breaking dexing.
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin") {
+        version { strictly '2.19.4' }
+    }
+    implementation platform('com.google.firebase:firebase-bom:34.16.0')
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.android.material:material:1.14.0'
     implementation project(':ORLib')
 
     // Unit testing framework
     testImplementation 'junit:junit:4.13.2'
 }
 
-task sourcesJar(type: Jar) {
+tasks.register('sourcesJar', Jar) {
     from android.sourceSets.main.java.srcDirs
     archiveClassifier = 'sources'
 }

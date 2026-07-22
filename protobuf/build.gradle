@@ -5,8 +5,8 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
     withJavadocJar()
 }
 
@@ -18,7 +18,7 @@ apply plugin: 'com.google.protobuf'
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:4.33.2"
+        artifact = "com.google.protobuf:protoc:4.35.1"
     }
     generateProtoTasks {
         all().each { task ->
@@ -32,22 +32,7 @@ protobuf {
 }
 
 dependencies {
-    implementation 'com.google.protobuf:protobuf-javalite:4.33.2'
-}
-
-sourceSets {
-    main {
-        java {
-            srcDir 'build/generated/source/proto/main/java'
-        }
-        proto {
-            srcDir 'src/main/proto'
-        }
-    }
-}
-
-tasks.withType(ProcessResources) {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    implementation 'com.google.protobuf:protobuf-javalite:4.35.1'
 }
 
 task sourcesJar(type: Jar) {
