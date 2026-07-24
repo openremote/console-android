@@ -3,7 +3,7 @@
     "project_number": "667022545910",
     "firebase_url": "https://openremoteapp-a6a60.firebaseio.com",
     "project_id": "openremoteapp-a6a60",
-    "storage_bucket": "openremoteapp-a6a60.appspot.com"
+    "storage_bucket": "openremoteapp-a6a60.firebasestorage.app"
   },
   "client": [
     {
@@ -13,12 +13,7 @@
           "package_name": "io.openremote.app"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "667022545910-g53k1fiocps3sso32hqvotr34fe2libr.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
           "current_key": "AIzaSyCXUqMM_P0Vo_pGmebCLgyD8RWeSN71TxU"
@@ -26,19 +21,7 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "667022545910-g53k1fiocps3sso32hqvotr34fe2libr.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "667022545910-9fee9uvb8iguprjtimmq8uea6cqt2p5i.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "io.openremote.app"
-              }
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
