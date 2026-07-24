@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id 'com.android.application'
-    id 'com.google.gms.google-services'
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.google.services)
     id 'maven-publish'
     id 'signing'
 }
@@ -68,24 +68,19 @@ kotlin {
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation 'androidx.core:core-ktx:1.18.0'
-    implementation 'androidx.appcompat:appcompat:1.7.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
-    implementation 'androidx.preference:preference-ktx:1.2.1'
-    implementation "com.google.android.gms:play-services-location:21.4.0"
-    // Pinned below 2.20: 2.20+ emits MethodHandle.invokeExact value-class bytecode
-    // that D8 rejects for minSdk < 26 (this project is minSdk 25). `strictly` makes a
-    // transitive bump to >=2.20 fail resolution loudly instead of silently breaking dexing.
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin") {
-        version { strictly '2.19.4' }
-    }
-    implementation platform('com.google.firebase:firebase-bom:34.16.0')
-    implementation 'com.google.firebase:firebase-messaging'
-    implementation 'com.google.android.material:material:1.14.0'
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.androidx.constraintlayout
+    implementation libs.androidx.preference.ktx
+    implementation libs.play.services.location
+    implementation libs.jackson.module.kotlin
+    implementation platform(libs.firebase.bom)
+    implementation libs.firebase.messaging
+    implementation libs.material
     implementation project(':ORLib')
 
     // Unit testing framework
-    testImplementation 'junit:junit:4.13.2'
+    testImplementation libs.junit
 }
 
 tasks.register('sourcesJar', Jar) {

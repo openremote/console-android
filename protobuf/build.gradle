@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    alias(libs.plugins.protobuf)
 }
 
 java {
@@ -14,11 +15,9 @@ javadoc {
     failOnError = false
 }
 
-apply plugin: 'com.google.protobuf'
-
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:4.35.1"
+        artifact = libs.protobuf.protoc.get().toString()
     }
     generateProtoTasks {
         all().each { task ->
@@ -32,10 +31,10 @@ protobuf {
 }
 
 dependencies {
-    implementation 'com.google.protobuf:protobuf-javalite:4.35.1'
+    implementation libs.protobuf.javalite
 }
 
-task sourcesJar(type: Jar) {
+tasks.register('sourcesJar', Jar) {
     dependsOn tasks.named('generateProto')
     from sourceSets.main.java.srcDirs
     archiveClassifier = 'sources'

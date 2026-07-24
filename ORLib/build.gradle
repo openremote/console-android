@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id 'com.android.library'
+    alias(libs.plugins.android.library)
     id 'maven-publish'
     id 'signing'
 }
@@ -58,39 +58,34 @@ kotlin {
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.18.0'
-    implementation 'androidx.appcompat:appcompat:1.7.1'
-    implementation 'com.google.android.material:material:1.14.0'
-    implementation 'androidx.preference:preference-ktx:1.2.1'
-    implementation "com.google.android.gms:play-services-location:21.4.0"
-    implementation 'com.google.android.gms:play-services-vision:20.1.3'
-    // Pinned below 2.20: 2.20+ emits MethodHandle.invokeExact value-class bytecode
-    // that D8 rejects for minSdk < 26 (this project is minSdk 25). `strictly` makes a
-    // transitive bump to >=2.20 fail resolution loudly instead of silently breaking dexing.
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin") {
-        version { strictly '2.19.4' }
-    }
-    implementation platform('com.google.firebase:firebase-bom:34.16.0')
-    implementation 'com.google.firebase:firebase-messaging'
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
-    implementation 'com.github.espressif:esp-idf-provisioning-android:lib-2.4.4'
-    implementation 'org.greenrobot:eventbus:3.3.1'
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.material
+    implementation libs.androidx.preference.ktx
+    implementation libs.play.services.location
+    implementation libs.play.services.vision
+    implementation libs.jackson.module.kotlin
+    implementation platform(libs.firebase.bom)
+    implementation libs.firebase.messaging
+    implementation libs.androidx.constraintlayout
+    implementation libs.esp.idf.provisioning
+    implementation libs.eventbus
 
-    implementation 'com.google.protobuf:protobuf-javalite:4.35.1'
-    implementation('com.google.protobuf:protobuf-kotlin:4.35.1') {
+    implementation libs.protobuf.javalite
+    implementation(libs.protobuf.kotlin) {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
 
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
+    implementation libs.coroutines.core
+    implementation libs.coroutines.android
 
-    implementation 'com.github.iammohdzaki:Password-Generator:0.6'
+    implementation libs.password.generator
 
     api project(':orlib-protobuf')
 }
 
 
-task sourcesJar(type: Jar) {
+tasks.register('sourcesJar', Jar) {
     from android.sourceSets.main.java.srcDirs
     archiveClassifier = 'sources'
 }
