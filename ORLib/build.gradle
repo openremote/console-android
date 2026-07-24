@@ -1,7 +1,7 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id 'com.android.library'
-    id 'kotlin-android'
-    id 'org.jetbrains.kotlin.android'
     id 'maven-publish'
     id 'signing'
 }
@@ -10,9 +10,9 @@ android {
     namespace = 'io.openremote.orlib'
 
     defaultConfig {
-        minSdkVersion = 25
-        compileSdk = 35
-        targetSdkVersion = 35
+        minSdk = 25
+        compileSdk = 36
+        targetSdk = 36
         versionCode = 1
         versionName = version
 
@@ -36,13 +36,11 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = '17'
     }
     lint {
         disable 'ProtectedPermissions'
@@ -53,27 +51,38 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
-    implementation 'androidx.core:core-ktx:1.16.0'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.core:core-ktx:1.18.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.14.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
-    implementation "com.google.android.gms:play-services-location:21.3.0"
+    implementation "com.google.android.gms:play-services-location:21.4.0"
     implementation 'com.google.android.gms:play-services-vision:20.1.3'
-    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1"
-    implementation platform('com.google.firebase:firebase-bom:33.12.0')
-    implementation 'com.google.firebase:firebase-messaging-ktx'
+    // Pinned below 2.20: 2.20+ emits MethodHandle.invokeExact value-class bytecode
+    // that D8 rejects for minSdk < 26 (this project is minSdk 25). `strictly` makes a
+    // transitive bump to >=2.20 fail resolution loudly instead of silently breaking dexing.
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin") {
+        version { strictly '2.19.4' }
+    }
+    implementation platform('com.google.firebase:firebase-bom:34.16.0')
+    implementation 'com.google.firebase:firebase-messaging'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
-    implementation 'com.github.espressif:esp-idf-provisioning-android:lib-2.2.3'
+    implementation 'com.github.espressif:esp-idf-provisioning-android:lib-2.4.4'
     implementation 'org.greenrobot:eventbus:3.3.1'
 
-    implementation 'com.google.protobuf:protobuf-javalite:4.33.2'
-    implementation('com.google.protobuf:protobuf-kotlin:4.33.2') {
+    implementation 'com.google.protobuf:protobuf-javalite:4.35.1'
+    implementation('com.google.protobuf:protobuf-kotlin:4.35.1') {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
 
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
 
     implementation 'com.github.iammohdzaki:Password-Generator:0.6'
 
