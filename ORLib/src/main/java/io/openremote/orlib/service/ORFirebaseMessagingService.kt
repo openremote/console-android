@@ -73,7 +73,7 @@ class ORFirebaseMessagingService : com.google.firebase.messaging.FirebaseMessagi
             // Mark as delivered on the server
             val notificationIdStr = messageData["notification-id"]
             var notificationId: Long? = null
-            if (notificationIdStr != null && notificationIdStr.isNotEmpty()) {
+            if (!notificationIdStr.isNullOrEmpty()) {
                 notificationId = notificationIdStr.toLong()
                 val consoleId: String? = getSharedPreferences(
                     applicationContext.getString(R.string.app_name),
@@ -105,7 +105,7 @@ class ORFirebaseMessagingService : com.google.firebase.messaging.FirebaseMessagi
                 // Check for action (to be executed when notification is clicked)
                 if (messageData.containsKey("action")) {
                     val actionJson = messageData["action"]
-                    if (actionJson != null && actionJson.isNotEmpty()) {
+                    if (!actionJson.isNullOrEmpty()) {
                         try {
                             actionOR = jacksonObjectMapper().readValue(
                                 actionJson,
@@ -120,7 +120,7 @@ class ORFirebaseMessagingService : com.google.firebase.messaging.FirebaseMessagi
                 // Check for buttons
                 if (messageData.containsKey("buttons")) {
                     val buttonsJson = messageData["buttons"]
-                    if (buttonsJson != null && buttonsJson.isNotEmpty()) {
+                    if (!buttonsJson.isNullOrEmpty()) {
                         try {
                             buttonORS = jacksonObjectMapper().readValue(
                                 buttonsJson,
