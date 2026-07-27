@@ -1,3 +1,21 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri('https://jitpack.io') }
+    }
+}
+
 // Include sub-projects dynamically, every directory with a build.gradle (and no .buildignore)
 fileTree(dir: rootDir, include: "**/build.gradle")
         .filter { it.parent != rootDir }

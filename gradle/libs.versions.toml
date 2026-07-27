@@ -1,0 +1,53 @@
+[versions]
+agp = "9.3.0"
+androidx-appcompat = "1.7.1"
+androidx-constraintlayout = "2.2.1"
+androidx-core-ktx = "1.18.0"
+androidx-preference = "1.2.1"
+axion-release-plugin = "1.21.2"
+coroutines = "1.11.0"
+esp-idf-provisioning = "lib-2.4.4"
+eventbus = "3.3.1"
+firebase-bom = "34.16.0"
+google-services-plugin = "4.5.0"
+# Jackson is pinned below 2.20: 2.20+ emits MethodHandle.invokeExact value-class bytecode
+# that D8 rejects for minSdk < 26 (this project is minSdk 25). The catalog's
+# strict version makes a transitive bump fail resolution instead of breaking dexing.
+jackson = { strictly = "2.19.4" }
+junit = "4.13.2"
+material = "1.14.0"
+nexus-publish-plugin = "2.0.0"
+password-generator = "0.6"
+play-services-location = "21.4.0"
+play-services-vision = "20.1.3"
+protobuf = "4.35.1"
+protobuf-plugin = "0.10.0"
+
+[libraries]
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
+androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidx-constraintlayout" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core-ktx" }
+androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "androidx-preference" }
+coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+esp-idf-provisioning = { module = "com.github.espressif:esp-idf-provisioning-android", version.ref = "esp-idf-provisioning" }
+eventbus = { module = "org.greenrobot:eventbus", version.ref = "eventbus" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+junit = { module = "junit:junit", version.ref = "junit" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
+password-generator = { module = "com.github.iammohdzaki:Password-Generator", version.ref = "password-generator" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+play-services-vision = { module = "com.google.android.gms:play-services-vision", version.ref = "play-services-vision" }
+protobuf-javalite = { module = "com.google.protobuf:protobuf-javalite", version.ref = "protobuf" }
+protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref = "protobuf" }
+protobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+axion-release = { id = "pl.allegro.tech.build.axion-release", version.ref = "axion-release-plugin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "google-services-plugin" }
+nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus-publish-plugin" }
+protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
