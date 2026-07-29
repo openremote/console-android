@@ -25,6 +25,7 @@ class QrScannerActivity : AppCompatActivity() {
     private var surfaceView: SurfaceView? = null
     private var barcodeDetector: BarcodeDetector? = null
     private var cameraSource: CameraSource? = null
+    private var cameraDisclosureShown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,11 +69,23 @@ class QrScannerActivity : AppCompatActivity() {
                         ) == PackageManager.PERMISSION_GRANTED
                     ) {
                         cameraSource!!.start(surfaceView!!.holder)
-                    } else {
-                        ActivityCompat.requestPermissions(
+                    } else if (!cameraDisclosureShown) {
+                        cameraDisclosureShown = true
+                        PermissionDisclosures.show(
                             this@QrScannerActivity,
-                            arrayOf(Manifest.permission.CAMERA),
-                            REQUEST_CAMERA_PERMISSION
+                            R.string.camera_disclosure_title,
+                            R.string.camera_disclosure_body,
+                            onAccept = {
+                                ActivityCompat.requestPermissions(
+                                    this@QrScannerActivity,
+                                    arrayOf(Manifest.permission.CAMERA),
+                                    REQUEST_CAMERA_PERMISSION
+                                )
+                            },
+                            onDecline = {
+                                setResult(RESULT_CANCELED)
+                                finish()
+                            }
                         )
                     }
                 } catch (e: IOException) {
@@ -126,7 +139,10 @@ class QrScannerActivity : AppCompatActivity() {
                 .setIcon(R.mipmap.ic_launcher)
                 .setTitle(R.string.camera_needed_alert_title)
                 .setMessage(R.string.camera_needed_alert_body)
-                .setNegativeButton(R.string.no, null)
+                .setNegativeButton(R.string.no) { _, _ ->
+                    setResult(RESULT_CANCELED)
+                    finish()
+                }
                 .setPositiveButton(R.string.yes) { dialog, which ->
                     ActivityCompat.requestPermissions(
                         this,

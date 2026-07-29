@@ -15,9 +15,9 @@
     <string name="error_downloading">Error downloading file</string>
     <string name="download_completed">Download completed</string>
     <string name="background_location_alert_title">Background location needed</string>
-    <string name="background_location_alert_body">In order to receive these notifications when the app is running in the background, background location access is needed.\nNo location history is stored, only the latest location is saved.\nDo you want to enabled it in the settings?</string>
+    <string name="background_location_alert_body">In order to receive these notifications when the app is running in the background, background location access is needed.\nNo location history is stored, only the latest location is saved.\nDo you want to enable it in the settings?</string>
     <string name="push_notification_alert_title">Push notifications needed</string>
-    <string name="push_notification_alert_message">In order to receive these notifications, push notifications need to be enabled.\nDo you want to enabled it in the settings?</string>
+    <string name="push_notification_alert_message">In order to receive these notifications, push notifications need to be enabled.\nDo you want to enable it in the settings?</string>
     <string name="camera_needed_alert_title">Camera access needed</string>
     <string name="camera_needed_alert_body">In order to scan QR codes, access to the devices camera is needed.</string>
     <string name="location_background_disabled_title">Background location disabled</string>
@@ -26,4 +26,20 @@
     <string name="button_accept">Accept</string>
     <string name="NOTIFICATION_CHANNEL_ID">OR</string>
     <string name="title_activity_offline">OfflineActivity</string>
+    <string name="location_disclosure_title">Location access</string>
+    <string name="location_disclosure_body">This app collects location data to enable geofencing and to update your location on the platform, even when the app is closed or not in use.\nNo location history is stored, only the latest location is saved.</string>
+    <string name="webview_location_disclosure_body">This app uses your location to show location-based information in the console while you are using the app.</string>
+    <string name="background_location_disclosure_title">Background location access</string>
+    <string name="background_location_disclosure_body">This app collects location data to enable geofencing, even when the app is closed or not in use.\nNo location history is stored, only the latest location is saved.\nTo enable this, allow location access all the time in the next step.</string>
+    <string name="push_notification_disclosure_title">Notifications</string>
+    <string name="push_notification_disclosure_body">This app sends push notifications to alert you about events and messages from the platform.\nTo receive them, allow notifications in the next step.</string>
+    <string name="camera_disclosure_title">Camera access</string>
+    <string name="camera_disclosure_body">This app uses the camera to scan QR codes.\nImages are processed on your device and are not stored or shared.</string>
+    <string name="bluetooth_disclosure_title">Bluetooth access</string>
+    <string name="bluetooth_disclosure_body">This app uses Bluetooth to find and connect to nearby devices, so they can be set up and controlled.</string>
+    <string name="bluetooth_location_disclosure_body">This app uses Bluetooth to find and connect to nearby devices, so they can be set up and controlled.\nOn this version of Android, location permission is required to scan for Bluetooth devices.</string>
+    <string name="storage_disclosure_title">Storage access</string>
+    <string name="storage_disclosure_body">To save the file to your Downloads folder, allow storage access in the next step.</string>
+    <string name="disclosure_continue">Continue</string>
+    <string name="disclosure_no_thanks">No thanks</string>
 </resources>
