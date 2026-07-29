@@ -1,24 +1,10 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-    ext.kotlin_version = "2.4.10"
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:9.1.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.google.gms:google-services:4.5.0'
-
-        classpath "com.google.protobuf:protobuf-gradle-plugin:0.10.0"
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
-    }
-}
-
 plugins {
-    id 'io.github.gradle-nexus.publish-plugin' version '2.0.0'
-    id 'pl.allegro.tech.build.axion-release' version '1.21.2'
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.protobuf) apply false
+    alias(libs.plugins.nexus.publish)
+    alias(libs.plugins.axion.release)
 }
 
 scmVersion {
@@ -53,12 +39,7 @@ nexusPublishing {
 }
 
 allprojects {
-    project.version = scmVersion.version
-    repositories {
-        google()
-        mavenCentral()
-        maven { url = 'https://jitpack.io' }
-    }
+    project.version = rootProject.scmVersion.version
 }
 
 tasks.register('clean', Delete) {
