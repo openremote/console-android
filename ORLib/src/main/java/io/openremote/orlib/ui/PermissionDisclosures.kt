@@ -1,8 +1,10 @@
 package io.openremote.orlib.ui
 
 import android.app.Activity
+import android.util.TypedValue
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.view.ContextThemeWrapper
 import io.openremote.orlib.R
 
 /**
@@ -23,7 +25,20 @@ object PermissionDisclosures {
             if (activity.isFinishing || activity.isDestroyed) {
                 return@runOnUiThread
             }
-            AlertDialog.Builder(activity)
+            // The AppCompat AlertDialog requires a theme that resolves alertDialogTheme;
+            // consuming apps may run this activity with a non-AppCompat theme.
+            val themedContext = if (activity.theme.resolveAttribute(
+                    androidx.appcompat.R.attr.alertDialogTheme, TypedValue(), true
+                )
+            ) {
+                activity
+            } else {
+                ContextThemeWrapper(
+                    activity,
+                    androidx.appcompat.R.style.Theme_AppCompat_DayNight_Dialog_Alert
+                )
+            }
+            AlertDialog.Builder(themedContext)
                 .setTitle(title)
                 .setMessage(message)
                 .setCancelable(false)
