@@ -4,9 +4,12 @@ androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.1"
 androidx-core-ktx = "1.18.0"
 androidx-preference = "1.2.1"
+androidx-test-junit = "1.3.0"
+androidx-test-runner = "1.7.0"
 axion-release-plugin = "1.21.2"
 coroutines = "1.11.0"
 esp-idf-provisioning = "lib-2.4.4"
+espresso = "3.7.0"
 eventbus = "3.3.1"
 firebase-bom = "34.16.0"
 google-services-plugin = "4.5.0"
@@ -28,9 +31,12 @@ androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "a
 androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidx-constraintlayout" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core-ktx" }
 androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "androidx-preference" }
+androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-junit" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 esp-idf-provisioning = { module = "com.github.espressif:esp-idf-provisioning-android", version.ref = "esp-idf-provisioning" }
+espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
 eventbus = { module = "org.greenrobot:eventbus", version.ref = "eventbus" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
