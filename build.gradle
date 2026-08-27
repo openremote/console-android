@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.protobuf) apply false
     alias(libs.plugins.nexus.publish)
     alias(libs.plugins.axion.release)
+    alias(libs.plugins.spotless)
 }
 
 scmVersion {
@@ -42,6 +43,8 @@ allprojects {
     project.version = rootProject.scmVersion.version
 }
 
-tasks.register('clean', Delete) {
+tasks.named('clean', Delete) {
     delete rootProject.layout.buildDirectory
 }
+
+apply from: 'spotless.gradle'

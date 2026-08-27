@@ -41,6 +41,9 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
+      - name: Run Spotless check
+        run: ./gradlew spotlessCheck
+
       - name: Run release
         id: release
         run: |
