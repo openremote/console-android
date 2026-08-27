@@ -1,0 +1,67 @@
+def sourceTarget = { Collection<String> includes ->
+  rootProject.fileTree(rootProject.projectDir) {
+    includes.each { include it }
+    exclude '**/build/**'
+    exclude '**/.gradle/**'
+  }
+}
+
+String prettierVersion = '3.9.6'
+
+spotless {
+  groovyGradle {
+    target sourceTarget(['**/*.gradle'])
+    toggleOffOn()
+    greclipse().configFile(rootProject.file('tools/spotless/greclipse-google.properties'))
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+
+  format('json') {
+    target sourceTarget(['**/*.json', '**/*.jsonc'])
+    toggleOffOn()
+    prettier(prettierVersion).npmInstallCache().configFile(rootProject.file('tools/spotless/.prettierrc.json'))
+    endWithNewline()
+  }
+
+  kotlin {
+    target sourceTarget(['**/*.kt'])
+    toggleOffOn()
+    ktfmt().googleStyle()
+    licenseHeaderFile rootProject.file('tools/spotless/openremote-license-header.txt')
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+
+  format('markdown') {
+    target sourceTarget(['**/*.md'])
+    toggleOffOn()
+    prettier(prettierVersion).npmInstallCache().configFile(rootProject.file('tools/spotless/.prettierrc.json'))
+    endWithNewline()
+  }
+
+  format('misc') {
+    target sourceTarget([
+      '.gitignore',
+      '**/*.properties',
+      '**/*.pro',
+      '**/*.toml'
+    ])
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+
+  format('xml') {
+    target sourceTarget(['**/*.xml', '**/*.xsd'])
+    toggleOffOn()
+    eclipseWtp('xml').configFile(rootProject.file('tools/spotless/eclipse-wtp-xml.properties'))
+    endWithNewline()
+  }
+
+  format('yaml') {
+    target sourceTarget(['**/*.yaml', '**/*.yml'])
+    toggleOffOn()
+    prettier(prettierVersion).npmInstallCache().configFile(rootProject.file('tools/spotless/.prettierrc.json'))
+    endWithNewline()
+  }
+}

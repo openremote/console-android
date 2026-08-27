@@ -45,6 +45,9 @@ jobs:
             echo "value=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Run Spotless check
+        run: ./gradlew spotlessCheck
+
       - name: Run assemble
         if: ${{ !steps.is_main_repo.outputs.value || github.event_name == 'pull_request' }}
         run: |
