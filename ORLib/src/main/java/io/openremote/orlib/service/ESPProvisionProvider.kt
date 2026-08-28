@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 package io.openremote.orlib.service
 
 import android.Manifest
@@ -13,328 +31,349 @@ import android.util.Log
 import androidx.annotation.VisibleForTesting
 import androidx.core.app.ActivityCompat
 import io.openremote.orlib.R
-import io.openremote.orlib.ui.PermissionDisclosures
 import io.openremote.orlib.service.espprovision.CallbackChannel
 import io.openremote.orlib.service.espprovision.DeviceConnection
 import io.openremote.orlib.service.espprovision.DeviceProvision
 import io.openremote.orlib.service.espprovision.DeviceRegistry
 import io.openremote.orlib.service.espprovision.WifiProvisioner
+import io.openremote.orlib.ui.PermissionDisclosures
+import java.net.URL
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.net.URL
 
 object ESPProvisionProviderActions {
-    const val PROVIDER_INIT = "PROVIDER_INIT"
-    const val PROVIDER_ENABLE = "PROVIDER_ENABLE"
-    const val PROVIDER_DISABLE = "PROVIDER_DISABLE"
-    const val START_BLE_SCAN = "START_BLE_SCAN"
-    const val STOP_BLE_SCAN = "STOP_BLE_SCAN"
-    const val CONNECT_TO_DEVICE = "CONNECT_TO_DEVICE"
-    const val DISCONNECT_FROM_DEVICE = "DISCONNECT_FROM_DEVICE"
-    const val START_WIFI_SCAN = "START_WIFI_SCAN"
-    const val STOP_WIFI_SCAN = "STOP_WIFI_SCAN"
-    const val SEND_WIFI_CONFIGURATION = "SEND_WIFI_CONFIGURATION"
-    const val PROVISION_DEVICE = "PROVISION_DEVICE"
-    const val EXIT_PROVISIONING = "EXIT_PROVISIONING"
+  const val PROVIDER_INIT = "PROVIDER_INIT"
+  const val PROVIDER_ENABLE = "PROVIDER_ENABLE"
+  const val PROVIDER_DISABLE = "PROVIDER_DISABLE"
+  const val START_BLE_SCAN = "START_BLE_SCAN"
+  const val STOP_BLE_SCAN = "STOP_BLE_SCAN"
+  const val CONNECT_TO_DEVICE = "CONNECT_TO_DEVICE"
+  const val DISCONNECT_FROM_DEVICE = "DISCONNECT_FROM_DEVICE"
+  const val START_WIFI_SCAN = "START_WIFI_SCAN"
+  const val STOP_WIFI_SCAN = "STOP_WIFI_SCAN"
+  const val SEND_WIFI_CONFIGURATION = "SEND_WIFI_CONFIGURATION"
+  const val PROVISION_DEVICE = "PROVISION_DEVICE"
+  const val EXIT_PROVISIONING = "EXIT_PROVISIONING"
 }
 
 class ESPProvisionProvider(val context: Context) {
-    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    val deviceRegistry: DeviceRegistry
-    var deviceConnection: DeviceConnection? = null
+  @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) val deviceRegistry: DeviceRegistry
+  var deviceConnection: DeviceConnection? = null
 
-    private var searchDeviceTimeout: Long = 120
-    private var searchDeviceMaxIterations = 25
+  private var searchDeviceTimeout: Long = 120
+  private var searchDeviceMaxIterations = 25
 
-    var wifiProvisioner: WifiProvisioner? = null
-    private var searchWifiTimeout: Long = 120
-    private var searchWifiMaxIterations = 25
+  var wifiProvisioner: WifiProvisioner? = null
+  private var searchWifiTimeout: Long = 120
+  private var searchWifiMaxIterations = 25
 
-    init {
-        deviceRegistry = DeviceRegistry(context, searchDeviceTimeout, searchDeviceMaxIterations)
+  init {
+    deviceRegistry = DeviceRegistry(context, searchDeviceTimeout, searchDeviceMaxIterations)
+  }
+
+  interface ESPProvisionCallback {
+    fun accept(responseData: Map<String, Any>)
+  }
+
+  companion object {
+    private const val espProvisionDisabledKey = "espProvisionDisabled"
+    private const val version = "beta"
+
+    const val TAG = "ESPProvisionProvider"
+
+    const val ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE = 655
+    const val BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE = 656
+  }
+
+  private val bluetoothAdapter: BluetoothAdapter by lazy {
+    val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    bluetoothManager.adapter
+  }
+
+  fun initialize(): Map<String, Any> {
+    val sharedPreferences =
+      context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
+
+    return hashMapOf(
+      "action" to ESPProvisionProviderActions.PROVIDER_INIT,
+      "provider" to "espprovision",
+      "version" to version,
+      "requiresPermission" to true,
+      "hasPermission" to hasPermission(),
+      "success" to true,
+      "enabled" to false,
+      "disabled" to sharedPreferences.contains(espProvisionDisabledKey),
+    )
+  }
+
+  @SuppressLint("MissingPermission")
+  fun enable(callback: ESPProvisionCallback, activity: Activity) {
+    deviceRegistry.callbackChannel = CallbackChannel(callback, "espprovision")
+    deviceRegistry.enable()
+
+    if (!bluetoothAdapter.isEnabled) {
+      Log.d("ESP", "BLE not enabled")
+      val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+      activity.startActivityForResult(
+        enableBtIntent,
+        ESPProvisionProvider.Companion.ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE,
+      )
+    } else if (!hasPermission()) {
+      Log.d("ESP", "Does not have permissions")
+      requestPermissions(activity)
     }
 
-    interface ESPProvisionCallback {
-        fun accept(responseData: Map<String, Any>)
+    if (bluetoothAdapter.isEnabled && hasPermission()) {
+      providerEnabled(deviceRegistry.callbackChannel)
     }
+  }
 
-    companion object {
-        private const val espProvisionDisabledKey = "espProvisionDisabled"
-        private const val version = "beta"
+  fun providerEnabled(callbackChannel: CallbackChannel?) {
+    val sharedPreferences =
+      context.getSharedPreferences(
+        context.getString(R.string.app_name),
+        Context.MODE_PRIVATE,
+      )
 
-        const val TAG = "ESPProvisionProvider"
+    sharedPreferences.edit().remove(espProvisionDisabledKey).apply()
 
-        const val ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE = 655
-        const val BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE = 656
-    }
+    callbackChannel?.sendMessage(
+      ESPProvisionProviderActions.PROVIDER_ENABLE,
+      hashMapOf(
+        "hasPermission" to hasPermission(),
+        "success" to true,
+        "enabled" to true,
+        "disabled" to sharedPreferences.contains(espProvisionDisabledKey),
+      ),
+    )
+  }
 
-    private val bluetoothAdapter: BluetoothAdapter by lazy {
-        val bluetoothManager =
-            context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothManager.adapter
-    }
+  @SuppressLint("MissingPermission")
+  fun disable(): Map<String, Any> {
+    deviceRegistry.disable()
 
-    fun initialize(): Map<String, Any> {
-        val sharedPreferences =
-            context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
+    //        disconnectFromDevice()
 
-        return hashMapOf(
-            "action" to ESPProvisionProviderActions.PROVIDER_INIT,
-            "provider" to "espprovision",
-            "version" to version,
-            "requiresPermission" to true,
-            "hasPermission" to hasPermission(),
-            "success" to true,
-            "enabled" to false,
-            "disabled" to sharedPreferences.contains(espProvisionDisabledKey)
-        )
-    }
+    val sharedPreferences =
+      context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
+    sharedPreferences.edit().putBoolean(espProvisionDisabledKey, true).apply()
 
-    @SuppressLint("MissingPermission")
-    fun enable(callback: ESPProvisionCallback, activity: Activity) {
-        deviceRegistry.callbackChannel = CallbackChannel(callback, "espprovision")
-        deviceRegistry.enable()
+    return hashMapOf(
+      "action" to ESPProvisionProviderActions.PROVIDER_DISABLE,
+      "provider" to "espprovision",
+    )
+  }
 
+  @SuppressLint("MissingPermission")
+  fun onRequestPermissionsResult(
+    activity: Activity,
+    requestCode: Int,
+    prefix: String?,
+  ) {
+    Log.d("espprovision", "onRequestPermissionsResult called with prefix >" + prefix + "<")
+    if (requestCode == BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE) {
+      val hasPermission = hasPermission()
+      if (hasPermission) {
         if (!bluetoothAdapter.isEnabled) {
-            Log.d("ESP", "BLE not enabled")
-            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            activity.startActivityForResult(enableBtIntent,
-                ESPProvisionProvider.Companion.ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE
-            )
-        } else if (!hasPermission()) {
-            Log.d("ESP", "Does not have permissions")
-            requestPermissions(activity)
-        }
-
-
-        if (bluetoothAdapter.isEnabled && hasPermission()) {
-            providerEnabled(deviceRegistry.callbackChannel)
-        }
-    }
-
-    fun providerEnabled(callbackChannel: CallbackChannel?) {
-        val sharedPreferences =
-            context.getSharedPreferences(
-                context.getString(R.string.app_name),
-                Context.MODE_PRIVATE
-            )
-
-        sharedPreferences.edit()
-            .remove(espProvisionDisabledKey)
-            .apply()
-
-        callbackChannel?.sendMessage(ESPProvisionProviderActions.PROVIDER_ENABLE,
-            hashMapOf(
-                "hasPermission" to hasPermission(),
-                "success" to true,
-                "enabled" to true,
-                "disabled" to sharedPreferences.contains(espProvisionDisabledKey)
-            )
-        )
-    }
-
-    @SuppressLint("MissingPermission")
-    fun disable(): Map<String, Any> {
-        deviceRegistry.disable()
-
-//        disconnectFromDevice()
-
-        val sharedPreferences =
-            context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
-        sharedPreferences.edit()
-            .putBoolean(espProvisionDisabledKey, true)
-            .apply()
-
-        return hashMapOf(
-            "action" to ESPProvisionProviderActions.PROVIDER_DISABLE,
-            "provider" to "espprovision"
-        )
-    }
-
-    @SuppressLint("MissingPermission")
-    fun onRequestPermissionsResult(
-        activity: Activity,
-        requestCode: Int,
-        prefix: String?
-    ) {
-        Log.d("espprovision", "onRequestPermissionsResult called with prefix >" + prefix + "<")
-        if (requestCode == BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE) {
-            val hasPermission = hasPermission()
-            if (hasPermission) {
-                if (!bluetoothAdapter.isEnabled) {
-                    val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                    activity.startActivityForResult(enableBtIntent, ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE)
-                } else {
-                    providerEnabled(deviceRegistry.callbackChannel)
-                    if (prefix != null) {
-                        deviceRegistry.startDevicesScan(prefix)
-                    }
-                }
-            }
-        } else if (requestCode == ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE) {
-            if (bluetoothAdapter.isEnabled) {
-                providerEnabled(deviceRegistry.callbackChannel)
-                if (prefix != null) {
-                    deviceRegistry.startDevicesScan(prefix)
-                }
-            }
-        }
-    }
-
-    // Device scan
-
-    @SuppressLint("MissingPermission")
-    fun startDevicesScan(prefix: String?, activity: Activity, callback: ESPProvisionCallback) {
-        deviceRegistry.callbackChannel = CallbackChannel(callback, "espprovision")
-        if (!bluetoothAdapter.isEnabled) {
-            Log.d("ESP", "BLE not enabled")
-            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            activity.startActivityForResult(enableBtIntent,
-                ESPProvisionProvider.Companion.ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE
-            )
-        } else if (!hasPermission()) {
-            Log.d("ESP", "Does not have permissions")
-            requestPermissions(activity)
+          val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+          activity.startActivityForResult(
+            enableBtIntent,
+            ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE,
+          )
         } else {
+          providerEnabled(deviceRegistry.callbackChannel)
+          if (prefix != null) {
             deviceRegistry.startDevicesScan(prefix)
+          }
         }
-    }
-
-    @SuppressLint("MissingPermission")
-    fun stopDevicesScan() {
-        deviceRegistry.stopDevicesScan()
-    }
-
-    // MARK: Device connect/disconnect
-
-    @SuppressLint("MissingPermission")
-    fun connectTo(deviceId: String, pop: String? = null, username: String? = null) {
-        if (deviceConnection == null) {
-            deviceConnection = DeviceConnection(deviceRegistry, deviceRegistry.callbackChannel)
+      }
+    } else if (requestCode == ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE) {
+      if (bluetoothAdapter.isEnabled) {
+        providerEnabled(deviceRegistry.callbackChannel)
+        if (prefix != null) {
+          deviceRegistry.startDevicesScan(prefix)
         }
-        deviceConnection?.connectTo(deviceId, pop, username)
+      }
     }
+  }
 
-    fun disconnectFromDevice() {
-        wifiProvisioner?.stopWifiScan()
-        deviceConnection?.disconnectFromDevice()
-    }
+  // Device scan
 
-    fun exitProvisioning() {
-        if (deviceConnection == null) {
-            return
-        }
-        if (!deviceConnection!!.isConnected) {
-            sendExitProvisioningError(ESPProviderErrorCode.NOT_CONNECTED, "No connection established to device")
-            return
-        }
-        deviceConnection!!.exitProvisioning()
-        deviceRegistry?.callbackChannel?.sendMessage(
-            ESPProvisionProviderActions.EXIT_PROVISIONING,
-            mapOf("exit" to true)
-        )
-    }
-
-    private fun sendExitProvisioningError(error: ESPProviderErrorCode, errorMessage: String?) {
-        val data = mutableMapOf<String, Any>()
-
-        data["exit"] = false
-        data["errorCode"] = error.code
-        errorMessage?.let {
-            data["errorMessage"] = it
-        }
-
-        deviceRegistry?.callbackChannel?.sendMessage(ESPProvisionProviderActions.EXIT_PROVISIONING, data)
-    }
-
-    // Wifi scan
-
-    fun startWifiScan() {
-        if (wifiProvisioner == null) {
-            wifiProvisioner = WifiProvisioner(deviceConnection, deviceRegistry.callbackChannel, searchWifiTimeout, searchWifiMaxIterations)
-        }
-        wifiProvisioner!!.startWifiScan()
-    }
-
-    fun stopWifiScan() {
-        wifiProvisioner?.stopWifiScan()
-    }
-
-    fun sendWifiConfiguration(ssid: String, password: String) {
-        if (wifiProvisioner == null) {
-            wifiProvisioner = WifiProvisioner(deviceConnection, deviceRegistry.callbackChannel, searchWifiTimeout, searchWifiMaxIterations)
-        }
-        wifiProvisioner!!.sendWifiConfiguration(ssid, password)
-    }
-
-    // OR Configuration
-
-    fun provisionDevice(apiURL: URL = URL("http://localhost:8080/api/master"), userToken: String, realm: String = "master") {
-        val deviceProvision = DeviceProvision(deviceConnection, deviceRegistry.callbackChannel)
-        CoroutineScope(Dispatchers.IO).launch {
-            deviceProvision.provision(apiURL, userToken, realm)
-        }
-    }
-
-    private fun requestPermissions(activity: Activity) {
-        val message = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            R.string.bluetooth_disclosure_body
-        } else {
-            R.string.bluetooth_location_disclosure_body
-        }
-        PermissionDisclosures.show(
-            activity,
-            R.string.bluetooth_disclosure_title,
-            message,
-            onAccept = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    ActivityCompat.requestPermissions(
-                        activity,
-                        arrayOf(
-                            Manifest.permission.BLUETOOTH_SCAN,
-                            Manifest.permission.BLUETOOTH_CONNECT
-                        ),
-                        ESPProvisionProvider.Companion.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE
-                    )
-                } else {
-                    ActivityCompat.requestPermissions(
-                        activity,
-                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                        ESPProvisionProvider.Companion.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE
-                    )
-                }
-            }
-        )
-    }
-
-    private fun hasPermission() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        context.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
-                context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+  @SuppressLint("MissingPermission")
+  fun startDevicesScan(prefix: String?, activity: Activity, callback: ESPProvisionCallback) {
+    deviceRegistry.callbackChannel = CallbackChannel(callback, "espprovision")
+    if (!bluetoothAdapter.isEnabled) {
+      Log.d("ESP", "BLE not enabled")
+      val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+      activity.startActivityForResult(
+        enableBtIntent,
+        ESPProvisionProvider.Companion.ENABLE_BLUETOOTH_ESPPROVISION_REQUEST_CODE,
+      )
+    } else if (!hasPermission()) {
+      Log.d("ESP", "Does not have permissions")
+      requestPermissions(activity)
     } else {
-        context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+      deviceRegistry.startDevicesScan(prefix)
+    }
+  }
+
+  @SuppressLint("MissingPermission")
+  fun stopDevicesScan() {
+    deviceRegistry.stopDevicesScan()
+  }
+
+  // MARK: Device connect/disconnect
+
+  @SuppressLint("MissingPermission")
+  fun connectTo(deviceId: String, pop: String? = null, username: String? = null) {
+    if (deviceConnection == null) {
+      deviceConnection = DeviceConnection(deviceRegistry, deviceRegistry.callbackChannel)
+    }
+    deviceConnection?.connectTo(deviceId, pop, username)
+  }
+
+  fun disconnectFromDevice() {
+    wifiProvisioner?.stopWifiScan()
+    deviceConnection?.disconnectFromDevice()
+  }
+
+  fun exitProvisioning() {
+    if (deviceConnection == null) {
+      return
+    }
+    if (!deviceConnection!!.isConnected) {
+      sendExitProvisioningError(
+        ESPProviderErrorCode.NOT_CONNECTED,
+        "No connection established to device",
+      )
+      return
+    }
+    deviceConnection!!.exitProvisioning()
+    deviceRegistry
+      ?.callbackChannel
+      ?.sendMessage(
+        ESPProvisionProviderActions.EXIT_PROVISIONING,
+        mapOf("exit" to true),
+      )
+  }
+
+  private fun sendExitProvisioningError(error: ESPProviderErrorCode, errorMessage: String?) {
+    val data = mutableMapOf<String, Any>()
+
+    data["exit"] = false
+    data["errorCode"] = error.code
+    errorMessage?.let {
+      data["errorMessage"] = it
     }
 
+    deviceRegistry
+      ?.callbackChannel
+      ?.sendMessage(ESPProvisionProviderActions.EXIT_PROVISIONING, data)
+  }
+
+  // Wifi scan
+
+  fun startWifiScan() {
+    if (wifiProvisioner == null) {
+      wifiProvisioner =
+        WifiProvisioner(
+          deviceConnection,
+          deviceRegistry.callbackChannel,
+          searchWifiTimeout,
+          searchWifiMaxIterations,
+        )
+    }
+    wifiProvisioner!!.startWifiScan()
+  }
+
+  fun stopWifiScan() {
+    wifiProvisioner?.stopWifiScan()
+  }
+
+  fun sendWifiConfiguration(ssid: String, password: String) {
+    if (wifiProvisioner == null) {
+      wifiProvisioner =
+        WifiProvisioner(
+          deviceConnection,
+          deviceRegistry.callbackChannel,
+          searchWifiTimeout,
+          searchWifiMaxIterations,
+        )
+    }
+    wifiProvisioner!!.sendWifiConfiguration(ssid, password)
+  }
+
+  // OR Configuration
+
+  fun provisionDevice(
+    apiURL: URL = URL("http://localhost:8080/api/master"),
+    userToken: String,
+    realm: String = "master",
+  ) {
+    val deviceProvision = DeviceProvision(deviceConnection, deviceRegistry.callbackChannel)
+    CoroutineScope(Dispatchers.IO).launch {
+      deviceProvision.provision(apiURL, userToken, realm)
+    }
+  }
+
+  private fun requestPermissions(activity: Activity) {
+    val message =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        R.string.bluetooth_disclosure_body
+      } else {
+        R.string.bluetooth_location_disclosure_body
+      }
+    PermissionDisclosures.show(
+      activity,
+      R.string.bluetooth_disclosure_title,
+      message,
+      onAccept = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(
+              Manifest.permission.BLUETOOTH_SCAN,
+              Manifest.permission.BLUETOOTH_CONNECT,
+            ),
+            ESPProvisionProvider.Companion.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE,
+          )
+        } else {
+          ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            ESPProvisionProvider.Companion.BLUETOOTH_PERMISSION_ESPPROVISION_REQUEST_CODE,
+          )
+        }
+      },
+    )
+  }
+
+  private fun hasPermission() =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      context.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) ==
+        PackageManager.PERMISSION_GRANTED &&
+        context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) ==
+          PackageManager.PERMISSION_GRANTED
+    } else {
+      context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+    }
 }
 
-data class ESPProviderException(val errorCode: ESPProviderErrorCode, val errorMessage: String) : Exception()
+data class ESPProviderException(val errorCode: ESPProviderErrorCode, val errorMessage: String) :
+  Exception()
 
 enum class ESPProviderErrorCode(val code: Int) {
-    UNKNOWN_DEVICE(100),
-
-    BLE_COMMUNICATION_ERROR(200),
-
-    NOT_CONNECTED(300),
-    COMMUNICATION_ERROR(301),
-
-    SECURITY_ERROR(400),
-
-    WIFI_CONFIGURATION_ERROR(500),
-    WIFI_COMMUNICATION_ERROR(501),
-    WIFI_AUTHENTICATION_ERROR(502),
-    WIFI_NETWORK_NOT_FOUND(503),
-
-    TIMEOUT_ERROR(600),
-
-    GENERIC_ERROR(10000);
+  UNKNOWN_DEVICE(100),
+  BLE_COMMUNICATION_ERROR(200),
+  NOT_CONNECTED(300),
+  COMMUNICATION_ERROR(301),
+  SECURITY_ERROR(400),
+  WIFI_CONFIGURATION_ERROR(500),
+  WIFI_COMMUNICATION_ERROR(501),
+  WIFI_AUTHENTICATION_ERROR(502),
+  WIFI_NETWORK_NOT_FOUND(503),
+  TIMEOUT_ERROR(600),
+  GENERIC_ERROR(10000),
 }

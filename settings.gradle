@@ -1,41 +1,34 @@
 pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
+  repositories {
+    google()
+    mavenCentral()
+    gradlePluginPortal()
+  }
 }
 
 dependencyResolutionManagement {
-    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+  repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
 
-    repositories {
-        google()
-        mavenCentral()
-        maven { url = uri('https://jitpack.io') }
-    }
+  repositories {
+    google()
+    mavenCentral()
+    maven { url = uri('https://jitpack.io') }
+  }
 }
 
 // Include sub-projects dynamically, every directory with a build.gradle (and no .buildignore)
 fileTree(
-  dir: rootDir,
-  include: "**/build.gradle",
-  excludes: [
-    ".git/**",
-    "**/.git/**",
-    ".gradle/**",
-    "**/.gradle/**",
-    "**/build/**"
-  ]
-)
-  .filter { it.parentFile != rootDir }
-  .filter { !new File(it.parentFile, ".buildignore").exists() }
-  .each {
-    include it.parentFile.canonicalPath
-      .replace(rootDir.canonicalPath, "")
-      .replace("\\", ":")
-      .replace("/", ":")
-  }
+        dir: rootDir,
+        include: "**/build.gradle",
+        excludes: [".git/**", "**/.git/**", ".gradle/**", "**/.gradle/**", "**/build/**"]
+        )
+        .filter { it.parentFile != rootDir }
+        .filter { !new File(it.parentFile, ".buildignore").exists() }
+        .each {
+          include it.parentFile.canonicalPath
+                  .replace(rootDir.canonicalPath, "")
+                  .replace("\\", ":")
+                  .replace("/", ":")
+        }
 
 project(':protobuf').name = 'orlib-protobuf'
-

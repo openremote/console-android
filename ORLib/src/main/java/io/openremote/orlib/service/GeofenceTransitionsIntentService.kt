@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 package io.openremote.orlib.service
 
 import android.content.BroadcastReceiver
@@ -17,156 +35,166 @@ import kotlin.concurrent.schedule
 
 class GeofenceTransitionsIntentService : BroadcastReceiver() {
 
-    private val LOG = Logger.getLogger(GeofenceTransitionsIntentService::class.java.name)
-    private var exitedLocation : Pair<GeofenceProvider.GeofenceDefinition, String?>? = null
-    private var enteredLocation : Pair<GeofenceProvider.GeofenceDefinition, String?>? = null
-    private var locationTimer : Timer = Timer()
-    private var sendQueued = false
+  private val LOG = Logger.getLogger(GeofenceTransitionsIntentService::class.java.name)
+  private var exitedLocation: Pair<GeofenceProvider.GeofenceDefinition, String?>? = null
+  private var enteredLocation: Pair<GeofenceProvider.GeofenceDefinition, String?>? = null
+  private var locationTimer: Timer = Timer()
+  private var sendQueued = false
 
-    override fun onReceive(context: Context?, intent: Intent?) {
+  override fun onReceive(context: Context?, intent: Intent?) {
 
-        val geofencingEvent = GeofencingEvent.fromIntent(intent!!) ?: return
+    val geofencingEvent = GeofencingEvent.fromIntent(intent!!) ?: return
 
-        if (geofencingEvent.hasError()) {
-            LOG.warning("Geofence event error : ${geofencingEvent.errorCode}")
-            return
-        }
-
-        val geofenceDefinitions = GeofenceProvider.getGeofences(context!!)
-
-        if (geofenceDefinitions.isEmpty()) {
-            LOG.fine("No stored geofence definitions so ignoring triggered geofence")
-            return
-        }
-
-        val baseUrl = intent.getStringExtra(ORConstants.BASE_URL_KEY)
-        val geofenceTransition = geofencingEvent.geofenceTransition
-        val trans = if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) "ENTER" else "EXIT"
-
-        geofencingEvent.triggeringGeofences?.forEach { geofence ->
-            val geofenceDefinition = geofenceDefinitions.firstOrNull { it.id == geofence.requestId }
-
-            if (geofenceDefinition != null) {
-
-                LOG.info("Triggered geofence '$trans': $geofenceDefinition")
-
-                geofenceDefinition.url = baseUrl + geofenceDefinition.url
-
-                val locationJson = when (geofenceTransition) {
-                    Geofence.GEOFENCE_TRANSITION_ENTER -> {
-                        val location = hashMapOf(
-                                "type" to "Point",
-                                "coordinates" to arrayOf(geofenceDefinition.lng, geofenceDefinition.lat)
-                        )
-                        ObjectMapper().writeValueAsString(location)
-                    }
-                    else -> {
-                        null
-                    }
-                }
-
-                // Android often triggers an exit on one fence at the same time as triggering an enter
-                // on another so we queue the sends to allow the server time to process the events
-                queueSendLocation(geofenceDefinition, locationJson)
-            } else {
-                LOG.info("Triggered geofence '$trans': unknown")
-            }
-        }
+    if (geofencingEvent.hasError()) {
+      LOG.warning("Geofence event error : ${geofencingEvent.errorCode}")
+      return
     }
 
-    @Synchronized
-    fun queueSendLocation(geofenceDefinition : GeofenceProvider.GeofenceDefinition, locationJson : String?) {
+    val geofenceDefinitions = GeofenceProvider.getGeofences(context!!)
 
-        if (locationJson == null) {
-            exitedLocation = Pair(geofenceDefinition, null)
-
-            // If exit is for same geofence as queued enter then remove enter to avoid incorrectly setting location
-            if (enteredLocation != null && enteredLocation!!.first.id == geofenceDefinition.id) {
-                enteredLocation = null
-            }
-        } else {
-            enteredLocation = Pair(geofenceDefinition, locationJson)
-        }
-
-        if (!sendQueued) {
-            sendQueued = true
-            LOG.info("Schedule send location")
-            locationTimer.schedule(2000) {
-                doSendLocation()
-            }
-        }
+    if (geofenceDefinitions.isEmpty()) {
+      LOG.fine("No stored geofence definitions so ignoring triggered geofence")
+      return
     }
 
-    @Synchronized
-    fun doSendLocation() {
+    val baseUrl = intent.getStringExtra(ORConstants.BASE_URL_KEY)
+    val geofenceTransition = geofencingEvent.geofenceTransition
+    val trans = if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) "ENTER" else "EXIT"
 
-        LOG.info("Do send location")
-        var success = false
+    geofencingEvent.triggeringGeofences?.forEach { geofence ->
+      val geofenceDefinition = geofenceDefinitions.firstOrNull { it.id == geofence.requestId }
 
-        if (exitedLocation != null) {
-            if (sendLocation(exitedLocation!!.first, exitedLocation!!.second)) {
-                exitedLocation = null
-                success = true
+      if (geofenceDefinition != null) {
+
+        LOG.info("Triggered geofence '$trans': $geofenceDefinition")
+
+        geofenceDefinition.url = baseUrl + geofenceDefinition.url
+
+        val locationJson =
+          when (geofenceTransition) {
+            Geofence.GEOFENCE_TRANSITION_ENTER -> {
+              val location =
+                hashMapOf(
+                  "type" to "Point",
+                  "coordinates" to arrayOf(geofenceDefinition.lng, geofenceDefinition.lat),
+                )
+              ObjectMapper().writeValueAsString(location)
             }
-        } else if (enteredLocation != null) {
-            if (sendLocation(enteredLocation!!.first, enteredLocation!!.second)) {
-                enteredLocation = null
-                success = true
+            else -> {
+              null
             }
-        }
+          }
 
-        if (exitedLocation != null || enteredLocation != null) {
+        // Android often triggers an exit on one fence at the same time as triggering an enter
+        // on another so we queue the sends to allow the server time to process the events
+        queueSendLocation(geofenceDefinition, locationJson)
+      } else {
+        LOG.info("Triggered geofence '$trans': unknown")
+      }
+    }
+  }
 
-            if (!success) {
-                LOG.info("Send failed so re-scheduling")
-            } else {
-                LOG.info("More locations to send so scheduling another run")
-            }
+  @Synchronized
+  fun queueSendLocation(
+    geofenceDefinition: GeofenceProvider.GeofenceDefinition,
+    locationJson: String?,
+  ) {
 
-            // Schedule another send
-            val delay = if (success) 5000L else 10000L
-            locationTimer.schedule(delay) {
-                doSendLocation()
-            }
-        } else {
-            sendQueued = false
-        }
+    if (locationJson == null) {
+      exitedLocation = Pair(geofenceDefinition, null)
+
+      // If exit is for same geofence as queued enter then remove enter to avoid incorrectly setting
+      // location
+      if (enteredLocation != null && enteredLocation!!.first.id == geofenceDefinition.id) {
+        enteredLocation = null
+      }
+    } else {
+      enteredLocation = Pair(geofenceDefinition, locationJson)
     }
 
-    @Synchronized
-    fun sendLocation(geofenceDefinition : GeofenceProvider.GeofenceDefinition, locationJson : String?): Boolean {
-        val url = URL(geofenceDefinition.url)
-        val connection = url.openConnection() as HttpURLConnection
-        var success = false
-
-        try {
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.requestMethod = geofenceDefinition.httpMethod
-            connection.connectTimeout = 10000
-            connection.doInput = false
-            connection.doOutput = true
-            connection.setChunkedStreamingMode(0)
-
-            if (locationJson == null) {
-                LOG.info("Sending location 'null' to server: HTTP ${geofenceDefinition.httpMethod} $url")
-                connection.outputStream.write("null".toByteArray(Charsets.UTF_8))
-            } else {
-                LOG.info("Sending location 'lat=${geofenceDefinition.lat}/lng=${geofenceDefinition.lng}' to server: HTTP ${geofenceDefinition.httpMethod} $url")
-                connection.outputStream.write(locationJson.toByteArray(Charsets.UTF_8))
-            }
-
-            connection.outputStream.flush()
-            val responseCode = connection.responseCode
-            success = responseCode == 204
-            LOG.info("Send location success: response=$responseCode")
-
-        } catch (exception: Exception) {
-            LOG.log(Level.SEVERE, "Send location failed", exception)
-            print(exception)
-        } finally {
-            connection.disconnect()
-        }
-
-        return success
+    if (!sendQueued) {
+      sendQueued = true
+      LOG.info("Schedule send location")
+      locationTimer.schedule(2000) {
+        doSendLocation()
+      }
     }
+  }
+
+  @Synchronized
+  fun doSendLocation() {
+
+    LOG.info("Do send location")
+    var success = false
+
+    if (exitedLocation != null) {
+      if (sendLocation(exitedLocation!!.first, exitedLocation!!.second)) {
+        exitedLocation = null
+        success = true
+      }
+    } else if (enteredLocation != null) {
+      if (sendLocation(enteredLocation!!.first, enteredLocation!!.second)) {
+        enteredLocation = null
+        success = true
+      }
+    }
+
+    if (exitedLocation != null || enteredLocation != null) {
+
+      if (!success) {
+        LOG.info("Send failed so re-scheduling")
+      } else {
+        LOG.info("More locations to send so scheduling another run")
+      }
+
+      // Schedule another send
+      val delay = if (success) 5000L else 10000L
+      locationTimer.schedule(delay) {
+        doSendLocation()
+      }
+    } else {
+      sendQueued = false
+    }
+  }
+
+  @Synchronized
+  fun sendLocation(
+    geofenceDefinition: GeofenceProvider.GeofenceDefinition,
+    locationJson: String?,
+  ): Boolean {
+    val url = URL(geofenceDefinition.url)
+    val connection = url.openConnection() as HttpURLConnection
+    var success = false
+
+    try {
+      connection.setRequestProperty("Content-Type", "application/json")
+      connection.requestMethod = geofenceDefinition.httpMethod
+      connection.connectTimeout = 10000
+      connection.doInput = false
+      connection.doOutput = true
+      connection.setChunkedStreamingMode(0)
+
+      if (locationJson == null) {
+        LOG.info("Sending location 'null' to server: HTTP ${geofenceDefinition.httpMethod} $url")
+        connection.outputStream.write("null".toByteArray(Charsets.UTF_8))
+      } else {
+        LOG.info(
+          "Sending location 'lat=${geofenceDefinition.lat}/lng=${geofenceDefinition.lng}' to server: HTTP ${geofenceDefinition.httpMethod} $url"
+        )
+        connection.outputStream.write(locationJson.toByteArray(Charsets.UTF_8))
+      }
+
+      connection.outputStream.flush()
+      val responseCode = connection.responseCode
+      success = responseCode == 204
+      LOG.info("Send location success: response=$responseCode")
+    } catch (exception: Exception) {
+      LOG.log(Level.SEVERE, "Send location failed", exception)
+      print(exception)
+    } finally {
+      connection.disconnect()
+    }
+
+    return success
+  }
 }

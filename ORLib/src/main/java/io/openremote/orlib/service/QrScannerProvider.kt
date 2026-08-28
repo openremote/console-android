@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 package io.openremote.orlib.service
 
 import android.Manifest
@@ -9,82 +27,76 @@ import io.openremote.orlib.R
 import io.openremote.orlib.ui.QrScannerActivity
 
 class QrScannerProvider(val context: Context) {
-    interface ScannerCallback {
-        fun accept(responseData: Map<String, Any>)
-    }
+  interface ScannerCallback {
+    fun accept(responseData: Map<String, Any>)
+  }
 
-    companion object {
-        private const val cameraPermissionAskedKey = "CameraPermissionAsked"
-        private const val qrDisabledKey = "qrDisabled"
-        private const val version = "qr"
-        const val REQUEST_SCAN_QR = 222
-    }
-    fun initialize(): Map<String, Any> {
-        val sharedPreferences =
-            context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
+  companion object {
+    private const val cameraPermissionAskedKey = "CameraPermissionAsked"
+    private const val qrDisabledKey = "qrDisabled"
+    private const val version = "qr"
+    const val REQUEST_SCAN_QR = 222
+  }
 
-        return hashMapOf(
-            "action" to "PROVIDER_INIT",
-            "provider" to "qr",
-            "version" to version,
-            "requiresPermission" to true,
-            "hasPermission" to (
-                    context.checkSelfPermission(
-                        Manifest.permission.CAMERA
-                    ) == PackageManager.PERMISSION_GRANTED),
-            "success" to true,
-            "enabled" to false, // Always require enabling to ensure geofences are refresh at startup
-            "disabled" to sharedPreferences.contains(qrDisabledKey)
-        )
-    }
+  fun initialize(): Map<String, Any> {
+    val sharedPreferences =
+      context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
 
-    fun enable(callback: ScannerCallback?) {
-        val sharedPreferences =
-            context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
+    return hashMapOf(
+      "action" to "PROVIDER_INIT",
+      "provider" to "qr",
+      "version" to version,
+      "requiresPermission" to true,
+      "hasPermission" to
+        (context.checkSelfPermission(Manifest.permission.CAMERA) ==
+          PackageManager.PERMISSION_GRANTED),
+      "success" to true,
+      "enabled" to false, // Always require enabling to ensure geofences are refresh at startup
+      "disabled" to sharedPreferences.contains(qrDisabledKey),
+    )
+  }
 
-        sharedPreferences.edit()
-            .remove(qrDisabledKey)
-            .apply()
+  fun enable(callback: ScannerCallback?) {
+    val sharedPreferences =
+      context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
 
-        val hasPermission =
-            context.checkSelfPermission(
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
+    sharedPreferences.edit().remove(qrDisabledKey).apply()
 
-        callback?.accept(
-            hashMapOf(
-                "action" to "PROVIDER_ENABLE",
-                "provider" to "qr",
-                "hasPermission" to hasPermission,
-                "success" to true,
-                "enabled" to true,
-                "disabled" to sharedPreferences.contains(qrDisabledKey)
-            )
-        )
-    }
+    val hasPermission =
+      context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
-    fun disable(): Map<String, Any> {
-        val sharedPreferences =
-            context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
-        sharedPreferences.edit()
-            .putBoolean(cameraPermissionAskedKey, true)
-            .apply()
+    callback?.accept(
+      hashMapOf(
+        "action" to "PROVIDER_ENABLE",
+        "provider" to "qr",
+        "hasPermission" to hasPermission,
+        "success" to true,
+        "enabled" to true,
+        "disabled" to sharedPreferences.contains(qrDisabledKey),
+      )
+    )
+  }
 
-        return hashMapOf(
-            "action" to "PROVIDER_DISABLE",
-            "provider" to "qr"
-        )
-    }
+  fun disable(): Map<String, Any> {
+    val sharedPreferences =
+      context.getSharedPreferences(context.getString(R.string.app_name), Context.MODE_PRIVATE)
+    sharedPreferences.edit().putBoolean(cameraPermissionAskedKey, true).apply()
 
-    fun startScanner(activity: Activity, callback: ScannerCallback?) {
-        val intent = Intent(activity, QrScannerActivity::class.java)
-        activity.startActivityForResult(intent, REQUEST_SCAN_QR)
-        callback?.accept(
-            hashMapOf(
-                "action" to "SCAN_QR",
-                "provider" to "qr",
-                "success" to true
-            )
-        )
-    }
+    return hashMapOf(
+      "action" to "PROVIDER_DISABLE",
+      "provider" to "qr",
+    )
+  }
+
+  fun startScanner(activity: Activity, callback: ScannerCallback?) {
+    val intent = Intent(activity, QrScannerActivity::class.java)
+    activity.startActivityForResult(intent, REQUEST_SCAN_QR)
+    callback?.accept(
+      hashMapOf(
+        "action" to "SCAN_QR",
+        "provider" to "qr",
+        "success" to true,
+      )
+    )
+  }
 }
