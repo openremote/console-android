@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 package io.openremote.app.ui
 
 import android.os.Bundle
@@ -16,132 +34,132 @@ import io.openremote.app.databinding.FragmentRealmSelectionBinding
 private const val ARG_REALM_LIST = "realmList"
 private const val ARG_SHOW_REALM_TEXT_INPUT = "showRealmTextInput"
 
-
 /**
- * A simple [Fragment] subclass.
- * Use the [RealmSelectionFragment.newInstance] factory method to
+ * A simple [Fragment] subclass. Use the [RealmSelectionFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
 class RealmSelectionFragment : Fragment() {
-    private lateinit var binding: FragmentRealmSelectionBinding
-    private lateinit var parentActivity: ProjectWizardActivity
+  private lateinit var binding: FragmentRealmSelectionBinding
+  private lateinit var parentActivity: ProjectWizardActivity
 
-    lateinit var realmArrayAdapter: ArrayAdapter<String>
+  lateinit var realmArrayAdapter: ArrayAdapter<String>
 
-    private var realmList: List<String>? = null
-    private var showRealmTextInput: Boolean = false
+  private var realmList: List<String>? = null
+  private var showRealmTextInput: Boolean = false
 
-    private val mapper = jacksonObjectMapper()
+  private val mapper = jacksonObjectMapper()
 
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    parentActivity = requireActivity() as ProjectWizardActivity
 
-        parentActivity = requireActivity() as ProjectWizardActivity
-
-        arguments?.let {
-            it.getString(ARG_REALM_LIST)?.let {
-                realmList = mapper.readValue<List<String>>(it)
-            }
-            showRealmTextInput = it.getBoolean(ARG_SHOW_REALM_TEXT_INPUT, false)
-        }
-
-        if (!realmList.isNullOrEmpty()) {
-            if (realmList!!.size == 1) {
-                parentActivity.realm = realmList!![0]
-                parentActivity.goToMainActivity(
-                    parentActivity.app!!,
-                    parentActivity.realm,
-                    parentActivity.consoleProviders
-                )
-            }
-        }
+    arguments?.let {
+      it.getString(ARG_REALM_LIST)?.let {
+        realmList = mapper.readValue<List<String>>(it)
+      }
+      showRealmTextInput = it.getBoolean(ARG_SHOW_REALM_TEXT_INPUT, false)
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        // Inflate the layout for this fragment
-        binding = FragmentRealmSelectionBinding.inflate(inflater, container, false);
-        val view: View = binding.root
+    if (!realmList.isNullOrEmpty()) {
+      if (realmList!!.size == 1) {
+        parentActivity.realm = realmList!![0]
+        parentActivity.goToMainActivity(
+          parentActivity.app!!,
+          parentActivity.realm,
+          parentActivity.consoleProviders,
+        )
+      }
+    }
+  }
 
-        if (showRealmTextInput) {
-            binding.realmInputLayout.visibility = View.VISIBLE
-            binding.realmInput.doOnTextChanged { text, start, before, count ->
-                parentActivity.realm = text.toString().trim()
+  override fun onCreateView(
+    inflater: LayoutInflater,
+    container: ViewGroup?,
+    savedInstanceState: Bundle?,
+  ): View {
+    // Inflate the layout for this fragment
+    binding = FragmentRealmSelectionBinding.inflate(inflater, container, false)
+    val view: View = binding.root
+
+    if (showRealmTextInput) {
+      binding.realmInputLayout.visibility = View.VISIBLE
+      binding.realmInput.doOnTextChanged { text, start, before, count ->
+        parentActivity.realm = text.toString().trim()
+      }
+    } else {
+      if (realmList != null) {
+        realmArrayAdapter =
+          ArrayAdapter(
+            requireActivity(),
+            android.R.layout.simple_spinner_dropdown_item,
+            realmList!!,
+          )
+        binding.realmSpinner.adapter = realmArrayAdapter
+        binding.realmSpinner.visibility = View.VISIBLE
+
+        binding.realmSpinner.onItemSelectedListener =
+          object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+              parent: AdapterView<*>?,
+              view: View?,
+              position: Int,
+              id: Long,
+            ) {
+              parentActivity.realm = realmArrayAdapter.getItem(position)
             }
-        } else {
-            if (realmList != null) {
-                realmArrayAdapter = ArrayAdapter(
-                    requireActivity(),
-                    android.R.layout.simple_spinner_dropdown_item,
-                    realmList!!
-                )
-                binding.realmSpinner.adapter = realmArrayAdapter
-                binding.realmSpinner.visibility = View.VISIBLE
 
-                binding.realmSpinner.onItemSelectedListener =
-                    object : AdapterView.OnItemSelectedListener {
-                        override fun onItemSelected(
-                            parent: AdapterView<*>?,
-                            view: View?,
-                            position: Int,
-                            id: Long
-                        ) {
-                            parentActivity.realm = realmArrayAdapter.getItem(position)
-                        }
-
-                        override fun onNothingSelected(p0: AdapterView<*>?) {
-                            parentActivity.realm = null
-                        }
-                    }
-            } else {
-                binding.realmInputLayout.visibility = View.VISIBLE
-                binding.realmInput.doOnTextChanged { text, start, before, count ->
-                    parentActivity.realm = text.toString().trim()
-                }
+            override fun onNothingSelected(p0: AdapterView<*>?) {
+              parentActivity.realm = null
             }
+          }
+      } else {
+        binding.realmInputLayout.visibility = View.VISIBLE
+        binding.realmInput.doOnTextChanged { text, start, before, count ->
+          parentActivity.realm = text.toString().trim()
         }
-
-        binding.finishButton.setOnClickListener {
-            if (parentActivity.realm != null) {
-                parentActivity.goToMainActivity(
-                    parentActivity.app!!,
-                    parentActivity.realm,
-                    parentActivity.consoleProviders
-                )
-            } else {
-                parentActivity.runOnUiThread {
-                    binding.errorView.visibility = View.VISIBLE
-                    binding.errorTextView.text = getString(R.string.select_realm_first)
-                }
-            }
-        }
-
-        binding.backButton.setOnClickListener {
-            parentFragmentManager.popBackStack()
-        }
-
-        return view
+      }
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @return A new instance of fragment RealmSelectionFragment.
-         */
-        @JvmStatic
-        fun newInstance(realmList: List<String>?, showRealmTextInput: Boolean = false) =
-            RealmSelectionFragment().apply {
-                arguments = Bundle().apply {
-                    realmList?.let {
-                        putString(ARG_REALM_LIST, mapper.writeValueAsString(it))
-                    }
-                    putBoolean(ARG_SHOW_REALM_TEXT_INPUT, showRealmTextInput)
-                }
-            }
+    binding.finishButton.setOnClickListener {
+      if (parentActivity.realm != null) {
+        parentActivity.goToMainActivity(
+          parentActivity.app!!,
+          parentActivity.realm,
+          parentActivity.consoleProviders,
+        )
+      } else {
+        parentActivity.runOnUiThread {
+          binding.errorView.visibility = View.VISIBLE
+          binding.errorTextView.text = getString(R.string.select_realm_first)
+        }
+      }
     }
+
+    binding.backButton.setOnClickListener {
+      parentFragmentManager.popBackStack()
+    }
+
+    return view
+  }
+
+  companion object {
+    /**
+     * Use this factory method to create a new instance of this fragment using the provided
+     * parameters.
+     *
+     * @return A new instance of fragment RealmSelectionFragment.
+     */
+    @JvmStatic
+    fun newInstance(realmList: List<String>?, showRealmTextInput: Boolean = false) =
+      RealmSelectionFragment().apply {
+        arguments =
+          Bundle().apply {
+            realmList?.let {
+              putString(ARG_REALM_LIST, mapper.writeValueAsString(it))
+            }
+            putBoolean(ARG_SHOW_REALM_TEXT_INPUT, showRealmTextInput)
+          }
+      }
+  }
 }

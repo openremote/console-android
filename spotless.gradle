@@ -41,12 +41,7 @@ spotless {
   }
 
   format('misc') {
-    target sourceTarget([
-      '.gitignore',
-      '**/*.properties',
-      '**/*.pro',
-      '**/*.toml'
-    ])
+    target sourceTarget(['.gitignore', '**/*.properties', '**/*.pro', '**/*.toml'])
     trimTrailingWhitespace()
     endWithNewline()
   }
