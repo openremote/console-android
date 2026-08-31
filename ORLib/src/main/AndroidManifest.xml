@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.BROADCAST_CLOSE_SYSTEM_DIALOGS" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.BROADCAST_CLOSE_SYSTEM_DIALOGS" />
 
-    <application>
-        <activity android:name="io.openremote.orlib.ui.OrOfflineActivity"
-                  android:exported="false"
-                  android:screenOrientation="portrait"/>
-    </application>
+  <application>
+    <activity android:name="io.openremote.orlib.ui.OrOfflineActivity" android:exported="false"
+      android:screenOrientation="portrait" />
+  </application>
 </manifest>

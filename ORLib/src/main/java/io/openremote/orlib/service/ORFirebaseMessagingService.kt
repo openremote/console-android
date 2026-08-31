@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 package io.openremote.orlib.service
 
 import android.app.NotificationChannel
@@ -21,235 +39,253 @@ import io.openremote.orlib.ui.NotificationActivity
 import java.util.logging.Level
 import java.util.logging.Logger
 
-
 class ORFirebaseMessagingService : com.google.firebase.messaging.FirebaseMessagingService() {
 
-    private var notificationResource: NotificationResource? = null
+  private var notificationResource: NotificationResource? = null
 
-    class MyBroadcastReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            LOG.info("TODO: Remove notification")
-        }
+  class MyBroadcastReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      LOG.info("TODO: Remove notification")
     }
+  }
 
-    override fun onCreate() {
-        super.onCreate()
-        notificationResource = NotificationResource(applicationContext)
+  override fun onCreate() {
+    super.onCreate()
+    notificationResource = NotificationResource(applicationContext)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            createNotificationChannel()
-        }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      createNotificationChannel()
     }
+  }
 
-    /**
-     * Called when message is received.
-     *
-     * @param remoteMessage Object representing the message received from Firebase Cloud Messaging.
-     */
-    // [START receive_message]
-    override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        // [START_EXCLUDE]
-        // There are two types of messages data messages and notification messages. Data messages are handled
-        // here in onMessageReceived whether the app is in the foreground or background. Data messages are the type
-        // traditionally used with GCM. Notification messages are only received here in onMessageReceived when the app
-        // is in the foreground. When the app is in the background an automatically generated notification is displayed.
-        // When the user taps on the notification they are returned to the app. Messages containing both notification
-        // and data payloads are treated as notification messages. The Firebase console always sends notification
-        // messages. For more see: https://firebase.google.com/docs/cloud-messaging/concept-options
-        // [END_EXCLUDE]
+  /**
+   * Called when message is received.
+   *
+   * @param remoteMessage Object representing the message received from Firebase Cloud Messaging.
+   */
+  // [START receive_message]
+  override fun onMessageReceived(remoteMessage: RemoteMessage) {
+    // [START_EXCLUDE]
+    // There are two types of messages data messages and notification messages. Data messages are
+    // handled
+    // here in onMessageReceived whether the app is in the foreground or background. Data messages
+    // are the type
+    // traditionally used with GCM. Notification messages are only received here in
+    // onMessageReceived when the app
+    // is in the foreground. When the app is in the background an automatically generated
+    // notification is displayed.
+    // When the user taps on the notification they are returned to the app. Messages containing both
+    // notification
+    // and data payloads are treated as notification messages. The Firebase console always sends
+    // notification
+    // messages. For more see: https://firebase.google.com/docs/cloud-messaging/concept-options
+    // [END_EXCLUDE]
 
-        // TODO(developer): Handle FCM messages here.
-        // Not getting messages here? See why this may be: https://goo.gl/39bRNJ
-        LOG.info("Received message from: " + remoteMessage.from)
+    // TODO(developer): Handle FCM messages here.
+    // Not getting messages here? See why this may be: https://goo.gl/39bRNJ
+    LOG.info("Received message from: " + remoteMessage.from)
 
-        // If the message contains a notification then we assume it has been shown to the user
-        if (remoteMessage.notification != null) {
-            LOG.info(
-                "Message contains notification body: " + remoteMessage.notification!!.getBody()
+    // If the message contains a notification then we assume it has been shown to the user
+    if (remoteMessage.notification != null) {
+      LOG.info("Message contains notification body: " + remoteMessage.notification!!.getBody())
+    } else if (remoteMessage.data.isNotEmpty()) {
+      val messageData: Map<String, String> = remoteMessage.data
+
+      // Mark as delivered on the server
+      val notificationIdStr = messageData["notification-id"]
+      var notificationId: Long? = null
+      if (!notificationIdStr.isNullOrEmpty()) {
+        notificationId = notificationIdStr.toLong()
+        val consoleId: String? =
+          getSharedPreferences(
+              applicationContext.getString(R.string.app_name),
+              Context.MODE_PRIVATE,
             )
-        } else if (remoteMessage.data.isNotEmpty()) {
-            val messageData: Map<String, String> = remoteMessage.data
+            .getString("consoleId", "")
+        if (!consoleId.isNullOrBlank()) {
+          notificationResource?.notificationDelivered(notificationId, consoleId)
+        }
+      }
+      val isSilent = !messageData.containsKey("or-title")
+      if (isSilent) {
+        when (val action: String? = remoteMessage.data.get("action")) {
+          "GEOFENCE_REFRESH" -> {
+            val geofenceProvider = GeofenceProvider(applicationContext)
+            geofenceProvider.refreshGeofences()
+          }
+          else -> {
+            val broadCastIntent = Intent(ORConstants.ACTION_BROADCAST)
+            broadCastIntent.putExtra("action", action)
+            sendBroadcast(broadCastIntent)
+          }
+        }
+      } else {
+        val title = messageData["or-title"]
+        val body = messageData["or-body"]
+        var buttonORS: Array<ORAlertButton>? = null
+        var actionOR: ORAlertAction? = null
 
-            // Mark as delivered on the server
-            val notificationIdStr = messageData["notification-id"]
-            var notificationId: Long? = null
-            if (!notificationIdStr.isNullOrEmpty()) {
-                notificationId = notificationIdStr.toLong()
-                val consoleId: String? = getSharedPreferences(
-                    applicationContext.getString(R.string.app_name),
-                    Context.MODE_PRIVATE
-                ).getString("consoleId", "")
-                if (!consoleId.isNullOrBlank()) {
-                    notificationResource?.notificationDelivered(notificationId, consoleId)
-                }
+        // Check for action (to be executed when notification is clicked)
+        if (messageData.containsKey("action")) {
+          val actionJson = messageData["action"]
+          if (!actionJson.isNullOrEmpty()) {
+            try {
+              actionOR =
+                jacksonObjectMapper()
+                  .readValue(
+                    actionJson,
+                    ORAlertAction::class.java,
+                  )
+            } catch (e: Exception) {
+              LOG.log(Level.SEVERE, "Failed to de-serialise alert action", e)
             }
-            val isSilent = !messageData.containsKey("or-title")
-            if (isSilent) {
-                when (val action: String? = remoteMessage.data.get("action")) {
-                    "GEOFENCE_REFRESH" -> {
-                        val geofenceProvider = GeofenceProvider(applicationContext)
-                        geofenceProvider.refreshGeofences()
-                    }
-                    else -> {
-                        val broadCastIntent = Intent(ORConstants.ACTION_BROADCAST)
-                        broadCastIntent.putExtra("action", action)
-                        sendBroadcast(broadCastIntent)
-                    }
-                }
-            } else {
-                val title = messageData["or-title"]
-                val body = messageData["or-body"]
-                var buttonORS: Array<ORAlertButton>? = null
-                var actionOR: ORAlertAction? = null
+          }
+        }
 
-                // Check for action (to be executed when notification is clicked)
-                if (messageData.containsKey("action")) {
-                    val actionJson = messageData["action"]
-                    if (!actionJson.isNullOrEmpty()) {
-                        try {
-                            actionOR = jacksonObjectMapper().readValue(
-                                actionJson,
-                                ORAlertAction::class.java
-                            )
-                        } catch (e: Exception) {
-                            LOG.log(Level.SEVERE, "Failed to de-serialise alert action", e)
-                        }
-                    }
-                }
-
-                // Check for buttons
-                if (messageData.containsKey("buttons")) {
-                    val buttonsJson = messageData["buttons"]
-                    if (!buttonsJson.isNullOrEmpty()) {
-                        try {
-                            buttonORS = jacksonObjectMapper().readValue(
-                                buttonsJson,
-                                Array<ORAlertButton>::class.java
-                            )
-                        } catch (e: Exception) {
-                            LOG.log(Level.SEVERE, "Failed to de-serialise alert actions", e)
-                        }
-                    }
-                }
-                handleNotification(notificationId, title, body, actionOR, buttonORS)
+        // Check for buttons
+        if (messageData.containsKey("buttons")) {
+          val buttonsJson = messageData["buttons"]
+          if (!buttonsJson.isNullOrEmpty()) {
+            try {
+              buttonORS =
+                jacksonObjectMapper()
+                  .readValue(
+                    buttonsJson,
+                    Array<ORAlertButton>::class.java,
+                  )
+            } catch (e: Exception) {
+              LOG.log(Level.SEVERE, "Failed to de-serialise alert actions", e)
             }
+          }
         }
+        handleNotification(notificationId, title, body, actionOR, buttonORS)
+      }
     }
+  }
 
-    override fun onNewToken(token: String) {
-        super.onNewToken(token)
-    }
+  override fun onNewToken(token: String) {
+    super.onNewToken(token)
+  }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun createNotificationChannel() {
-        val channelName = "OR Message Service"
-        val channel = NotificationChannel(
-            getString(R.string.NOTIFICATION_CHANNEL_ID),
-            channelName, NotificationManager.IMPORTANCE_HIGH
+  @RequiresApi(Build.VERSION_CODES.O)
+  private fun createNotificationChannel() {
+    val channelName = "OR Message Service"
+    val channel =
+      NotificationChannel(
+        getString(R.string.NOTIFICATION_CHANNEL_ID),
+        channelName,
+        NotificationManager.IMPORTANCE_HIGH,
+      )
+    val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    channel.setShowBadge(false)
+    channel.setSound(defaultSoundUri, null)
+    channel.enableVibration(true)
+    channel.vibrationPattern = longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400)
+    val service = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    service.createNotificationChannel(channel)
+  }
+
+  private fun handleNotification(
+    notificationId: Long?,
+    title: String?,
+    body: String?,
+    actionOR: ORAlertAction?,
+    buttonORS: Array<ORAlertButton>?,
+  ) {
+    val pm = packageManager
+    val notificationIntent = pm.getLaunchIntentForPackage(packageName)
+    notificationIntent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+    val pendingIntent =
+      PendingIntent.getActivity(
+        this,
+        0,
+        notificationIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+      )
+
+    val notificationBuilder =
+      NotificationCompat.Builder(
+          this,
+          getString(R.string.NOTIFICATION_CHANNEL_ID),
         )
-        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        channel.setShowBadge(false)
-        channel.setSound(defaultSoundUri, null)
-        channel.enableVibration(true)
-        channel.vibrationPattern = longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400)
-        val service = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        service.createNotificationChannel(channel)
+        .setContentTitle(title)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+        .setContentText(body)
+        .setSmallIcon(R.drawable.ic_notification)
+        .setContentIntent(pendingIntent)
+        .setDeleteIntent(createActionIntent(notificationId, "\"CLOSED\"", null))
+    if (actionOR != null) {
+      notificationBuilder.setContentIntent(createActionIntent(notificationId, null, actionOR))
     }
-
-    private fun handleNotification(
-        notificationId: Long?,
-        title: String?,
-        body: String?,
-        actionOR: ORAlertAction?,
-        buttonORS: Array<ORAlertButton>?
-    ) {
-        val pm = packageManager
-        val notificationIntent = pm.getLaunchIntentForPackage(packageName)
-        notificationIntent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
-        val pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
-        val notificationBuilder = NotificationCompat.Builder(
-            this,
-            getString(R.string.NOTIFICATION_CHANNEL_ID)
+    if (buttonORS != null) {
+      for (alertButton in buttonORS) {
+        notificationBuilder.addAction(
+          NotificationCompat.Action(
+            R.drawable.empty,
+            alertButton.title,
+            createActionIntent(
+              notificationId,
+              alertButton.title,
+              alertButton.action,
+            ),
+          )
         )
-            .setContentTitle(title)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setContentText(body)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentIntent(pendingIntent)
-            .setDeleteIntent(createActionIntent(notificationId, "\"CLOSED\"", null))
-        if (actionOR != null) {
-            notificationBuilder.setContentIntent(createActionIntent(notificationId, null, actionOR))
-        }
-        if (buttonORS != null) {
-            for (alertButton in buttonORS) {
-                notificationBuilder.addAction(
-                    NotificationCompat.Action(
-                        R.drawable.empty,
-                        alertButton.title,
-                        createActionIntent(
-                            notificationId,
-                            alertButton.title,
-                            alertButton.action
-                        )
-                    )
-                )
-            }
-        }
-        LOG.info(
-            "Showing notification id=$notificationId, title=$title, body=$body, action=$actionOR, buttons=" + (buttonORS?.size
-                ?: 0)
-        )
-        val notificationManager =
-            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
-        notificationManager?.notify(notificationId.hashCode(), notificationBuilder.build())
+      }
     }
+    LOG.info(
+      "Showing notification id=$notificationId, title=$title, body=$body, action=$actionOR, buttons=" +
+        (buttonORS?.size ?: 0)
+    )
+    val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
+    notificationManager?.notify(notificationId.hashCode(), notificationBuilder.build())
+  }
 
-    private fun createActionIntent(
-        notificationId: Long?,
-        acknowledgement: String?,
-        orAlertAction: ORAlertAction?
-    ): PendingIntent {
-        val actionIntent = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-                Intent(this, NotificationActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
-                            Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                            Intent.FLAG_ACTIVITY_NO_HISTORY or
-                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                }
-            }
-            else -> Intent(this, ORMessagingActionService::class.java)
+  private fun createActionIntent(
+    notificationId: Long?,
+    acknowledgement: String?,
+    orAlertAction: ORAlertAction?,
+  ): PendingIntent {
+    val actionIntent =
+      when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+          Intent(this, NotificationActivity::class.java).apply {
+            flags =
+              Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                Intent.FLAG_ACTIVITY_NO_HISTORY or
+                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+          }
         }
-        actionIntent.putExtra("notificationId", notificationId)
-        actionIntent.putExtra("acknowledgement", acknowledgement)
-        actionIntent.action = System.currentTimeMillis().toString()
-        if (orAlertAction?.url != null && orAlertAction.url.isNotEmpty()) {
-            actionIntent.putExtra("appUrl", orAlertAction.url)
-            actionIntent.putExtra("httpMethod", orAlertAction.httpMethod)
-            actionIntent.putExtra("silent", orAlertAction.silent)
-            actionIntent.putExtra("openInBrowser", orAlertAction.openInBrowser)
-            actionIntent.putExtra("data", ObjectMapper().writeValueAsString(orAlertAction.data))
-        }
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.getActivity(
-                this,
-                0,
-                actionIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        } else {
-            PendingIntent.getService(
-                this,
-                0,
-                actionIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-        }
+        else -> Intent(this, ORMessagingActionService::class.java)
+      }
+    actionIntent.putExtra("notificationId", notificationId)
+    actionIntent.putExtra("acknowledgement", acknowledgement)
+    actionIntent.action = System.currentTimeMillis().toString()
+    if (orAlertAction?.url != null && orAlertAction.url.isNotEmpty()) {
+      actionIntent.putExtra("appUrl", orAlertAction.url)
+      actionIntent.putExtra("httpMethod", orAlertAction.httpMethod)
+      actionIntent.putExtra("silent", orAlertAction.silent)
+      actionIntent.putExtra("openInBrowser", orAlertAction.openInBrowser)
+      actionIntent.putExtra("data", ObjectMapper().writeValueAsString(orAlertAction.data))
     }
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      PendingIntent.getActivity(
+        this,
+        0,
+        actionIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+      )
+    } else {
+      PendingIntent.getService(
+        this,
+        0,
+        actionIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+      )
+    }
+  }
 
-    companion object {
-        private val LOG = Logger.getLogger(
-            ORFirebaseMessagingService::class.java.name
-        )
-    }
+  companion object {
+    private val LOG = Logger.getLogger(ORFirebaseMessagingService::class.java.name)
+  }
 }

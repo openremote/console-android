@@ -1,25 +1,26 @@
 plugins {
-    alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.android.library) apply false
-    alias(libs.plugins.google.services) apply false
-    alias(libs.plugins.protobuf) apply false
-    alias(libs.plugins.nexus.publish)
-    alias(libs.plugins.axion.release)
+  alias(libs.plugins.android.application) apply false
+  alias(libs.plugins.android.library) apply false
+  alias(libs.plugins.google.services) apply false
+  alias(libs.plugins.protobuf) apply false
+  alias(libs.plugins.nexus.publish)
+  alias(libs.plugins.axion.release)
+  alias(libs.plugins.spotless)
 }
 
 scmVersion {
-    releaseOnlyOnReleaseBranches = true
-    releaseBranchNames = ['main']
-    unshallowRepoOnCI.set(true)
-    versionCreator('simple')
-    versionIncrementer('incrementMinor')
-    repository {
-        remote.set("origin")
-    }
-    tag {
-        prefix.set("")
-        initialVersion({config, position -> '1.2.0'})
-    }
+  releaseOnlyOnReleaseBranches = true
+  releaseBranchNames = ['main']
+  unshallowRepoOnCI.set(true)
+  versionCreator('simple')
+  versionIncrementer('incrementMinor')
+  repository {
+    remote.set("origin")
+  }
+  tag {
+    prefix.set("")
+    initialVersion({config, position -> '1.2.0'})
+  }
 }
 
 group = 'io.openremote'
@@ -28,20 +29,22 @@ version = scmVersion.version
 println "Build version: ${version}"
 
 nexusPublishing {
-    repositories {
-        sonatype {
-            nexusUrl = uri(findProperty("releasesRepoUrl"))
-            snapshotRepositoryUrl = uri(findProperty("snapshotsRepoUrl"))
-            username = findProperty("publishUsername")
-            password = findProperty("publishPassword")
-        }
+  repositories {
+    sonatype {
+      nexusUrl = uri(findProperty("releasesRepoUrl"))
+      snapshotRepositoryUrl = uri(findProperty("snapshotsRepoUrl"))
+      username = findProperty("publishUsername")
+      password = findProperty("publishPassword")
     }
+  }
 }
 
 allprojects {
-    project.version = rootProject.scmVersion.version
+  project.version = rootProject.scmVersion.version
 }
 
-tasks.register('clean', Delete) {
-    delete rootProject.layout.buildDirectory
+tasks.named('clean', Delete) {
+  delete rootProject.layout.buildDirectory
 }
+
+apply from: 'spotless.gradle'

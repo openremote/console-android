@@ -1,158 +1,158 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.android.library)
-    id 'maven-publish'
-    id 'signing'
+  alias(libs.plugins.android.library)
+  id 'maven-publish'
+  id 'signing'
 }
 
 android {
-    namespace = 'io.openremote.orlib'
+  namespace = 'io.openremote.orlib'
 
-    defaultConfig {
-        minSdk = 25
-        compileSdk = 37
-        targetSdk = 37
-        versionCode = 1
-        versionName = version
+  defaultConfig {
+    minSdk = 25
+    compileSdk = 37
+    targetSdk = 37
+    versionCode = 1
+    versionName = version
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
-    }
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    consumerProguardFiles "consumer-rules.pro"
+  }
 
-    buildTypes {
-        dev {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-        staging {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
+  buildTypes {
+    dev {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
     }
-    buildFeatures {
-        viewBinding = true
-        buildConfig = true
+    staging {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
     }
-    lint {
-        disable 'ProtectedPermissions'
+  }
+  buildFeatures {
+    viewBinding = true
+    buildConfig = true
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+  lint {
+    disable 'ProtectedPermissions'
+  }
+  publishing {
+    singleVariant('release') {
     }
-    publishing {
-        singleVariant('release') {
-        }
-    }
+  }
 }
 
 kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
-    }
+  compilerOptions {
+    jvmTarget.set(JvmTarget.JVM_17)
+  }
 }
 
 dependencies {
-    implementation libs.androidx.core.ktx
-    implementation libs.androidx.appcompat
-    implementation libs.material
-    implementation libs.androidx.preference.ktx
-    implementation libs.play.services.location
-    implementation libs.play.services.vision
-    implementation libs.jackson.module.kotlin
-    implementation platform(libs.firebase.bom)
-    implementation libs.firebase.messaging
-    implementation libs.androidx.constraintlayout
-    implementation libs.esp.idf.provisioning
-    implementation libs.eventbus
+  implementation libs.androidx.core.ktx
+  implementation libs.androidx.appcompat
+  implementation libs.material
+  implementation libs.androidx.preference.ktx
+  implementation libs.play.services.location
+  implementation libs.play.services.vision
+  implementation libs.jackson.module.kotlin
+  implementation platform(libs.firebase.bom)
+  implementation libs.firebase.messaging
+  implementation libs.androidx.constraintlayout
+  implementation libs.esp.idf.provisioning
+  implementation libs.eventbus
 
-    implementation libs.protobuf.javalite
-    implementation(libs.protobuf.kotlin) {
-        exclude group: 'com.google.protobuf', module: 'protobuf-java'
-    }
+  implementation libs.protobuf.javalite
+  implementation(libs.protobuf.kotlin) {
+    exclude group: 'com.google.protobuf', module: 'protobuf-java'
+  }
 
-    implementation libs.coroutines.core
-    implementation libs.coroutines.android
+  implementation libs.coroutines.core
+  implementation libs.coroutines.android
 
-    implementation libs.password.generator
+  implementation libs.password.generator
 
-    api project(':orlib-protobuf')
+  api project(':orlib-protobuf')
 
-    androidTestImplementation libs.junit
-    androidTestImplementation libs.androidx.test.junit
-    androidTestImplementation libs.androidx.test.runner
-    androidTestImplementation libs.espresso.core
+  androidTestImplementation libs.junit
+  androidTestImplementation libs.androidx.test.junit
+  androidTestImplementation libs.androidx.test.runner
+  androidTestImplementation libs.espresso.core
 }
 
 
 tasks.register('sourcesJar', Jar) {
-    from android.sourceSets.main.java.srcDirs
-    archiveClassifier = 'sources'
+  from android.sourceSets.main.java.srcDirs
+  archiveClassifier = 'sources'
 }
 
 afterEvaluate {
-    publishing {
-        publications {
-            release(MavenPublication) {
-                from components.release
+  publishing {
+    publications {
+      release(MavenPublication) {
+        from components.release
 
-                artifact sourcesJar
+        artifact sourcesJar
 
-                group = "io.openremote"
-                artifactId = "orlib"
+        group = "io.openremote"
+        artifactId = "orlib"
 
-                pom {
-                    name = 'OpenRemote Android Library'
-                    description = 'Provides the Android OpenRemote Library'
-                    url = 'https://github.com/openremote/console-android'
-                    licenses {
-                        license {
-                            name = 'GNU Affero General Public License v3.0'
-                            url = 'https://www.gnu.org/licenses/agpl-3.0.en.html'
-                        }
-                    }
-                    developers {
-                        developer {
-                            id = 'developers'
-                            name = 'Developers'
-                            email = 'developers@openremote.io'
-                            organization = 'OpenRemote'
-                            organizationUrl = 'https://openremote.io'
-                        }
-                    }
-                    scm {
-                        connection = 'scm:git:git://github.com/openremote/console-android.git'
-                        developerConnection = 'scm:git:ssh://github.com:openremote/console-android.git'
-                        url = 'https://github.com/openremote/console-android/tree/main'
-                    }
-                }
+        pom {
+          name = 'OpenRemote Android Library'
+          description = 'Provides the Android OpenRemote Library'
+          url = 'https://github.com/openremote/console-android'
+          licenses {
+            license {
+              name = 'GNU Affero General Public License v3.0'
+              url = 'https://www.gnu.org/licenses/agpl-3.0.en.html'
             }
-        }
-
-        repositories {
-            maven {
-                if (!version.endsWith('-LOCAL')) {
-                    credentials {
-                        username = findProperty("publishUsername")
-                        password = findProperty("publishPassword")
-                    }
-                }
-                url = version.endsWith('-LOCAL') ? layout.buildDirectory.dir('repo') : version.endsWith('-SNAPSHOT') ? findProperty("snapshotsRepoUrl") : findProperty("releasesRepoUrl")
+          }
+          developers {
+            developer {
+              id = 'developers'
+              name = 'Developers'
+              email = 'developers@openremote.io'
+              organization = 'OpenRemote'
+              organizationUrl = 'https://openremote.io'
             }
+          }
+          scm {
+            connection = 'scm:git:git://github.com/openremote/console-android.git'
+            developerConnection = 'scm:git:ssh://github.com:openremote/console-android.git'
+            url = 'https://github.com/openremote/console-android/tree/main'
+          }
         }
+      }
     }
 
-    signing {
-        def signingKey = findProperty("signingKey")
-        def signingPassword = findProperty("signingPassword")
-        if (signingKey && signingPassword) {
-            useInMemoryPgpKeys(signingKey, signingPassword)
-            sign publishing.publications
+    repositories {
+      maven {
+        if (!version.endsWith('-LOCAL')) {
+          credentials {
+            username = findProperty("publishUsername")
+            password = findProperty("publishPassword")
+          }
         }
+        url = version.endsWith('-LOCAL') ? layout.buildDirectory.dir('repo') : version.endsWith('-SNAPSHOT') ? findProperty("snapshotsRepoUrl") : findProperty("releasesRepoUrl")
+      }
     }
+  }
+
+  signing {
+    def signingKey = findProperty("signingKey")
+    def signingPassword = findProperty("signingPassword")
+    if (signingKey && signingPassword) {
+      useInMemoryPgpKeys(signingKey, signingPassword)
+      sign publishing.publications
+    }
+  }
 }
