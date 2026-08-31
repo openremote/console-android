@@ -23,7 +23,7 @@ nexus-publish-plugin = "2.0.0"
 password-generator = "0.6"
 play-services-location = "21.4.0"
 play-services-vision = "20.1.3"
-protobuf = "4.35.1"
+protobuf = "4.36.0"
 protobuf-plugin = "0.10.0"
 spotless = "8.10.1"
 
