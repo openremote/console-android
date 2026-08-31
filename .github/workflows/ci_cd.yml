@@ -4,14 +4,20 @@ on:
   # Push on main and release tags
   push:
     branches:
-      - "main"
+      - main
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
 
   # PR
   pull_request:
     branches:
-      - "main"
+      - main
+
+  # Merge PRs using merge group
+  merge_group:
+    types: [checks_requested]
+    branches:
+      - main
 
   # Manual trigger
   workflow_dispatch:
@@ -37,23 +43,21 @@ jobs:
           java-version: "17"
           cache: "gradle"
 
-      - name: Check if main repo
-        id: is_main_repo
+      - name: Check if this is a publish event
+        id: is_publish_event
         run: |
-          if [ $GITHUB_REPOSITORY == 'openremote/console-android' ]; then
-            echo "value=true" >> $GITHUB_OUTPUT
-          fi
+          echo "value=${{ github.repository == 'openremote/console-android' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}" >> "$GITHUB_OUTPUT"
 
       - name: Run Spotless check
         run: ./gradlew spotlessCheck
 
       - name: Run assemble
-        if: ${{ !steps.is_main_repo.outputs.value || github.event_name == 'pull_request' }}
+        if: ${{ steps.is_publish_event.outputs.value == 'false' }}
         run: |
           ./gradlew assemble
 
       - name: Run assemble and publish
-        if: ${{ steps.is_main_repo.outputs.value && github.event_name != 'pull_request' }}
+        if: ${{ steps.is_publish_event.outputs.value == 'true' }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > keystore
           ./gradlew assemble publishToSonatype closeAndReleaseSonatypeStagingRepository \
