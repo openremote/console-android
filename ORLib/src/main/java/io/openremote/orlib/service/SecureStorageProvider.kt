@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 package io.openremote.orlib.service
 
 import android.content.Context
@@ -16,131 +34,133 @@ import javax.crypto.spec.GCMParameterSpec
 
 class SecureStorageProvider(val context: Context) {
 
-    private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("secure_prefs", Context.MODE_PRIVATE)
-    private val keyAlias = context.packageName + ".secure_storage_key"
-    private val mapper = jacksonObjectMapper()
+  private val sharedPreferences: SharedPreferences =
+    context.getSharedPreferences("secure_prefs", Context.MODE_PRIVATE)
+  private val keyAlias = context.packageName + ".secure_storage_key"
+  private val mapper = jacksonObjectMapper()
 
-    companion object {
-        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val TRANSFORMATION =
-            "${KeyProperties.KEY_ALGORITHM_AES}/${KeyProperties.BLOCK_MODE_GCM}/${KeyProperties.ENCRYPTION_PADDING_NONE}"
+  companion object {
+    private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+    private const val TRANSFORMATION =
+      "${KeyProperties.KEY_ALGORITHM_AES}/${KeyProperties.BLOCK_MODE_GCM}/${KeyProperties.ENCRYPTION_PADDING_NONE}"
+  }
+
+  init {
+    if (!isKeyExists()) {
+      generateKey()
+
+      // Migrate data from default shared preferences to secure storage
+      // This is a one-time operation
+      val defaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+      val allEntries = defaultSharedPreferences.all
+      for ((key, value) in allEntries) {
+        storeData(key, value as String?)
+        defaultSharedPreferences.edit().remove(key).apply()
+      }
     }
+  }
 
-    init {
-        if (!isKeyExists()) {
-            generateKey()
-
-            // Migrate data from default shared preferences to secure storage
-            // This is a one-time operation
-            val defaultSharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-            val allEntries = defaultSharedPreferences.all
-            for ((key, value) in allEntries) {
-                storeData(key, value as String?)
-                defaultSharedPreferences.edit().remove(key).apply()
-            }
-        }
+  private fun getKeyStore(): KeyStore {
+    return KeyStore.getInstance(ANDROID_KEYSTORE).apply {
+      load(null)
     }
+  }
 
-    private fun getKeyStore(): KeyStore {
-        return KeyStore.getInstance(ANDROID_KEYSTORE).apply {
-            load(null)
-        }
-    }
-
-    private fun generateKey() {
-        val keyGenerator =
-            KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
-        val keyGenParameterSpec = KeyGenParameterSpec.Builder(
-            keyAlias,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+  private fun generateKey() {
+    val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
+    val keyGenParameterSpec =
+      KeyGenParameterSpec.Builder(
+          keyAlias,
+          KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
         )
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .build()
-        keyGenerator.init(keyGenParameterSpec)
-        keyGenerator.generateKey()
+        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+        .build()
+    keyGenerator.init(keyGenParameterSpec)
+    keyGenerator.generateKey()
+  }
+
+  private fun isKeyExists(): Boolean {
+    val keyStore = getKeyStore()
+    return keyStore.containsAlias(keyAlias)
+  }
+
+  private fun getSecretKey(): SecretKey {
+    val keyStore = getKeyStore()
+    return keyStore.getKey(keyAlias, null) as SecretKey
+  }
+
+  private fun encryptData(data: String): String {
+    val cipher = Cipher.getInstance(TRANSFORMATION)
+    cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
+    val iv = cipher.iv
+    val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+    val combined = iv + encryptedData
+    return Base64.encodeToString(combined, Base64.DEFAULT)
+  }
+
+  fun initialize(): Map<String, Any> {
+    return hashMapOf(
+      "action" to "PROVIDER_INIT",
+      "provider" to "storage",
+      "version" to "1.0.0",
+      "enabled" to true,
+      "requiresPermission" to false,
+      "hasPermission" to true,
+      "success" to true,
+    )
+  }
+
+  fun enable(): Map<String, Any> {
+    return hashMapOf(
+      "action" to "PROVIDER_ENABLE",
+      "provider" to "storage",
+      "hasPermission" to true,
+      "success" to true,
+    )
+  }
+
+  fun storeData(key: String?, data: String?) {
+    if (key == null) return
+
+    val editor = sharedPreferences.edit()
+    if (data == null) {
+      editor.remove(key)
+    } else {
+      val encryptedData = encryptData(data)
+      editor.putString(key, encryptedData)
     }
+    editor.apply()
+  }
 
-    private fun isKeyExists(): Boolean {
-        val keyStore = getKeyStore()
-        return keyStore.containsAlias(keyAlias)
-    }
+  fun retrieveData(key: String?): Map<String, Any?> {
+    val result =
+      hashMapOf(
+        "action" to "RETRIEVE",
+        "provider" to "storage",
+        "key" to key,
+        "value" to null as Any?,
+      )
 
-    private fun getSecretKey(): SecretKey {
-        val keyStore = getKeyStore()
-        return keyStore.getKey(keyAlias, null) as SecretKey
-    }
+    val encryptedData = sharedPreferences.getString(key, null) ?: return result
 
-    private fun encryptData(data: String): String {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, getSecretKey())
-        val iv = cipher.iv
-        val encryptedData = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
-        val combined = iv + encryptedData
-        return Base64.encodeToString(combined, Base64.DEFAULT)
-    }
+    val combined = Base64.decode(encryptedData, Base64.DEFAULT)
+    val iv = combined.copyOfRange(0, 12)
+    val data = combined.copyOfRange(12, combined.size)
 
-    fun initialize(): Map<String, Any> {
-        return hashMapOf(
-            "action" to "PROVIDER_INIT",
-            "provider" to "storage",
-            "version" to "1.0.0",
-            "enabled" to true,
-            "requiresPermission" to false,
-            "hasPermission" to true,
-            "success" to true,
-        )
-    }
+    val cipher = Cipher.getInstance(TRANSFORMATION)
+    val spec = GCMParameterSpec(128, iv)
+    cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
+    val plainData = cipher.doFinal(data).toString(Charsets.UTF_8)
 
-    fun enable(): Map<String, Any> {
-        return hashMapOf(
-            "action" to "PROVIDER_ENABLE",
-            "provider" to "storage",
-            "hasPermission" to true,
-            "success" to true,
-        )
-    }
+    val value =
+      try {
+        mapper.readTree(plainData)
+      } catch (e: JsonProcessingException) {
+        plainData
+      }
 
-    fun storeData(key: String?, data: String?) {
-        if (key == null) return
-
-        val editor = sharedPreferences.edit()
-        if (data == null) {
-            editor.remove(key)
-        } else {
-            val encryptedData = encryptData(data)
-            editor.putString(key, encryptedData)
-        }
-        editor.apply()
-    }
-
-    fun retrieveData(key: String?): Map<String, Any?> {
-        val result = hashMapOf(
-            "action" to "RETRIEVE",
-            "provider" to "storage",
-            "key" to key,
-            "value" to null as Any?,
-        )
-
-        val encryptedData = sharedPreferences.getString(key, null) ?: return result
-
-        val combined = Base64.decode(encryptedData, Base64.DEFAULT)
-        val iv = combined.copyOfRange(0, 12)
-        val data = combined.copyOfRange(12, combined.size)
-
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        val spec = GCMParameterSpec(128, iv)
-        cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
-        val plainData = cipher.doFinal(data).toString(Charsets.UTF_8)
-
-        val value = try {
-            mapper.readTree(plainData)
-        } catch (e: JsonProcessingException) {
-            plainData
-        }
-
-        result["value"] = value
-        return result
-    }
+    result["value"] = value
+    return result
+  }
 }

@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 package io.openremote.orlib.service.espprovision
 
 import com.espressif.provisioning.ESPConstants
@@ -8,143 +26,175 @@ import com.espressif.provisioning.listeners.WiFiScanListener
 import io.openremote.orlib.service.ESPProviderErrorCode
 import io.openremote.orlib.service.ESPProvisionProviderActions
 
-class WifiProvisioner(private var deviceConnection: DeviceConnection? = null, var callbackChannel: CallbackChannel? = null, searchWifiTimeout: Long, searchWifiMaxIterations: Int) {
-    private var loopDetector = LoopDetector(searchWifiTimeout, searchWifiMaxIterations)
+class WifiProvisioner(
+  private var deviceConnection: DeviceConnection? = null,
+  var callbackChannel: CallbackChannel? = null,
+  searchWifiTimeout: Long,
+  searchWifiMaxIterations: Int,
+) {
+  private var loopDetector = LoopDetector(searchWifiTimeout, searchWifiMaxIterations)
 
-    var wifiScanning = false
-        private set
+  var wifiScanning = false
+    private set
 
-    private val wifiNetworks = mutableListOf<WiFiAccessPoint>()
+  private val wifiNetworks = mutableListOf<WiFiAccessPoint>()
 
-    fun startWifiScan() {
-        if (deviceConnection?.isConnected != true) {
-            sendWifiScanError(ESPProviderErrorCode.NOT_CONNECTED)
-            return
-        }
-        wifiScanning = true
-        loopDetector.reset()
-        scanWifi()
+  fun startWifiScan() {
+    if (deviceConnection?.isConnected != true) {
+      sendWifiScanError(ESPProviderErrorCode.NOT_CONNECTED)
+      return
+    }
+    wifiScanning = true
+    loopDetector.reset()
+    scanWifi()
+  }
+
+  fun stopWifiScan(sendMessage: Boolean = true) {
+    wifiScanning = false
+    if (sendMessage) {
+      callbackChannel?.sendMessage(ESPProvisionProviderActions.STOP_WIFI_SCAN, null)
+    }
+  }
+
+  private fun scanWifi() {
+    if (loopDetector.detectLoop()) {
+      stopWifiScan(false)
+      sendWifiScanError(ESPProviderErrorCode.TIMEOUT_ERROR)
+      return
     }
 
-    fun stopWifiScan(sendMessage: Boolean = true) {
-        wifiScanning = false
-        if (sendMessage) {
-            callbackChannel?.sendMessage(ESPProvisionProviderActions.STOP_WIFI_SCAN, null)
-        }
-    }
-
-    private fun scanWifi() {
-        if (loopDetector.detectLoop()) {
-            stopWifiScan(false)
-            sendWifiScanError(ESPProviderErrorCode.TIMEOUT_ERROR)
-            return
-        }
-
-        deviceConnection?.espDevice?.scanNetworks(object : WiFiScanListener {
-            override fun onWifiListReceived(wifiList: ArrayList<WiFiAccessPoint?>?) {
-                wifiList?.let {
-                    if (wifiScanning) {
-                        var wifiNetworksChanged = false
-                        it.forEach { wifiAP ->
-                            wifiAP?.let { discoveredAP ->
-                                val ap = wifiNetworks.firstOrNull() { ap -> discoveredAP.wifiName == ap.wifiName }
-                                if (ap != null) {
-                                    if (ap.rssi != discoveredAP.rssi) {
-                                        wifiNetworksChanged = true
-                                        wifiNetworks.remove(ap)
-                                        wifiNetworks.add(discoveredAP)
-                                    }
-                                } else {
-                                    wifiNetworksChanged = true
-                                    wifiNetworks.add(discoveredAP)
-                                }
-                            }
-                        }
-                        if (wifiNetworks.isNotEmpty() && wifiNetworksChanged) {
-                            callbackChannel?.sendMessage(ESPProvisionProviderActions.START_WIFI_SCAN, hashMapOf(
-                                "networks" to wifiNetworks.map { network ->
-                                    hashMapOf(
-                                        "ssid" to network.wifiName,
-                                        "signalStrength" to network.rssi)
-                                }
-                            ))
-                        }
-                        scanWifi()
+    deviceConnection
+      ?.espDevice
+      ?.scanNetworks(
+        object : WiFiScanListener {
+          override fun onWifiListReceived(wifiList: ArrayList<WiFiAccessPoint?>?) {
+            wifiList?.let {
+              if (wifiScanning) {
+                var wifiNetworksChanged = false
+                it.forEach { wifiAP ->
+                  wifiAP?.let { discoveredAP ->
+                    val ap =
+                      wifiNetworks.firstOrNull() { ap -> discoveredAP.wifiName == ap.wifiName }
+                    if (ap != null) {
+                      if (ap.rssi != discoveredAP.rssi) {
+                        wifiNetworksChanged = true
+                        wifiNetworks.remove(ap)
+                        wifiNetworks.add(discoveredAP)
+                      }
+                    } else {
+                      wifiNetworksChanged = true
+                      wifiNetworks.add(discoveredAP)
                     }
+                  }
                 }
+                if (wifiNetworks.isNotEmpty() && wifiNetworksChanged) {
+                  callbackChannel?.sendMessage(
+                    ESPProvisionProviderActions.START_WIFI_SCAN,
+                    hashMapOf(
+                      "networks" to
+                        wifiNetworks.map { network ->
+                          hashMapOf(
+                            "ssid" to network.wifiName,
+                            "signalStrength" to network.rssi,
+                          )
+                        }
+                    ),
+                  )
+                }
+                scanWifi()
+              }
             }
+          }
 
-            override fun onWiFiScanFailed(e: Exception) {
-                stopWifiScan(false)
-                sendWifiScanError(ESPProviderErrorCode.COMMUNICATION_ERROR, e.toString())
-            }
-        })
-    }
-
-    private fun sendWifiScanError(error: ESPProviderErrorCode? = null, errorMessage: String? = null) {
-        val data = mutableMapOf<String, Any>(
-            "id" to (deviceConnection?.deviceId?.toString() ?: "N/A")
-        )
-        error?.let { data["errorCode"] = it.code }
-        errorMessage?.let { data["errorMessage"] = it }
-        callbackChannel?.sendMessage(ESPProvisionProviderActions.STOP_WIFI_SCAN, data)
-    }
-
-    fun sendWifiConfiguration(ssid: String, password: String) {
-        if (deviceConnection?.isConnected != true) {
-            sendWifiConfigurationStatus(false, ESPProviderErrorCode.NOT_CONNECTED)
-            return
+          override fun onWiFiScanFailed(e: Exception) {
+            stopWifiScan(false)
+            sendWifiScanError(ESPProviderErrorCode.COMMUNICATION_ERROR, e.toString())
+          }
         }
-        stopWifiScan()
+      )
+  }
 
-        deviceConnection?.espDevice?.provision(ssid, password, object: ProvisionListener {
-            override fun createSessionFailed(e: java.lang.Exception?) {
-                sendWifiConfigurationStatus(false, ESPProviderErrorCode.GENERIC_ERROR, e.toString())
-            }
+  private fun sendWifiScanError(error: ESPProviderErrorCode? = null, errorMessage: String? = null) {
+    val data = mutableMapOf<String, Any>("id" to (deviceConnection?.deviceId?.toString() ?: "N/A"))
+    error?.let { data["errorCode"] = it.code }
+    errorMessage?.let { data["errorMessage"] = it }
+    callbackChannel?.sendMessage(ESPProvisionProviderActions.STOP_WIFI_SCAN, data)
+  }
 
-            override fun wifiConfigSent() {
-                /* ignore */
-            }
-
-            override fun wifiConfigFailed(e: java.lang.Exception?) {
-                sendWifiConfigurationStatus(false, ESPProviderErrorCode.WIFI_CONFIGURATION_ERROR, e.toString())
-            }
-
-            override fun wifiConfigApplied() {
-                /* ignore */
-            }
-
-            override fun wifiConfigApplyFailed(e: java.lang.Exception?) {
-                sendWifiConfigurationStatus(false, ESPProviderErrorCode.GENERIC_ERROR, e.toString())
-            }
-
-            override fun provisioningFailedFromDevice(failureReason: ESPConstants.ProvisionFailureReason?) {
-                sendWifiConfigurationStatus(false, mapProvisionFailureReason(failureReason ?: ProvisionFailureReason.UNKNOWN))
-            }
-
-            override fun deviceProvisioningSuccess() {
-                sendWifiConfigurationStatus(true)
-            }
-
-            override fun onProvisioningFailed(e: java.lang.Exception?) {
-                sendWifiConfigurationStatus(false, ESPProviderErrorCode.GENERIC_ERROR, e.toString())
-            }
-        })
+  fun sendWifiConfiguration(ssid: String, password: String) {
+    if (deviceConnection?.isConnected != true) {
+      sendWifiConfigurationStatus(false, ESPProviderErrorCode.NOT_CONNECTED)
+      return
     }
+    stopWifiScan()
 
-    private fun sendWifiConfigurationStatus(connected: Boolean, error: ESPProviderErrorCode? = null, errorMessage: String? = null) {
-        val data = mutableMapOf<String, Any>("connected" to connected)
-        error?.let { data["errorCode"] = it.code }
-        errorMessage?.let { data["errorMessage"] = it }
-        callbackChannel?.sendMessage(ESPProvisionProviderActions.SEND_WIFI_CONFIGURATION, data)
-    }
+    deviceConnection
+      ?.espDevice
+      ?.provision(
+        ssid,
+        password,
+        object : ProvisionListener {
+          override fun createSessionFailed(e: java.lang.Exception?) {
+            sendWifiConfigurationStatus(false, ESPProviderErrorCode.GENERIC_ERROR, e.toString())
+          }
 
-    private fun mapProvisionFailureReason(reason: ProvisionFailureReason): ESPProviderErrorCode {
-        return when (reason) {
-            ProvisionFailureReason.AUTH_FAILED -> ESPProviderErrorCode.WIFI_AUTHENTICATION_ERROR
-            ProvisionFailureReason.NETWORK_NOT_FOUND -> ESPProviderErrorCode.WIFI_NETWORK_NOT_FOUND
-            ProvisionFailureReason.DEVICE_DISCONNECTED -> ESPProviderErrorCode.NOT_CONNECTED
-            ProvisionFailureReason.UNKNOWN -> ESPProviderErrorCode.GENERIC_ERROR
-        }
+          override fun wifiConfigSent() {
+            /* ignore */
+          }
+
+          override fun wifiConfigFailed(e: java.lang.Exception?) {
+            sendWifiConfigurationStatus(
+              false,
+              ESPProviderErrorCode.WIFI_CONFIGURATION_ERROR,
+              e.toString(),
+            )
+          }
+
+          override fun wifiConfigApplied() {
+            /* ignore */
+          }
+
+          override fun wifiConfigApplyFailed(e: java.lang.Exception?) {
+            sendWifiConfigurationStatus(false, ESPProviderErrorCode.GENERIC_ERROR, e.toString())
+          }
+
+          override fun provisioningFailedFromDevice(
+            failureReason: ESPConstants.ProvisionFailureReason?
+          ) {
+            sendWifiConfigurationStatus(
+              false,
+              mapProvisionFailureReason(failureReason ?: ProvisionFailureReason.UNKNOWN),
+            )
+          }
+
+          override fun deviceProvisioningSuccess() {
+            sendWifiConfigurationStatus(true)
+          }
+
+          override fun onProvisioningFailed(e: java.lang.Exception?) {
+            sendWifiConfigurationStatus(false, ESPProviderErrorCode.GENERIC_ERROR, e.toString())
+          }
+        },
+      )
+  }
+
+  private fun sendWifiConfigurationStatus(
+    connected: Boolean,
+    error: ESPProviderErrorCode? = null,
+    errorMessage: String? = null,
+  ) {
+    val data = mutableMapOf<String, Any>("connected" to connected)
+    error?.let { data["errorCode"] = it.code }
+    errorMessage?.let { data["errorMessage"] = it }
+    callbackChannel?.sendMessage(ESPProvisionProviderActions.SEND_WIFI_CONFIGURATION, data)
+  }
+
+  private fun mapProvisionFailureReason(reason: ProvisionFailureReason): ESPProviderErrorCode {
+    return when (reason) {
+      ProvisionFailureReason.AUTH_FAILED -> ESPProviderErrorCode.WIFI_AUTHENTICATION_ERROR
+      ProvisionFailureReason.NETWORK_NOT_FOUND -> ESPProviderErrorCode.WIFI_NETWORK_NOT_FOUND
+      ProvisionFailureReason.DEVICE_DISCONNECTED -> ESPProviderErrorCode.NOT_CONNECTED
+      ProvisionFailureReason.UNKNOWN -> ESPProviderErrorCode.GENERIC_ERROR
     }
+  }
 }

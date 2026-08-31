@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026, OpenRemote Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 package io.openremote.orlib.ui
 
 import android.Manifest
@@ -21,154 +39,164 @@ import io.openremote.orlib.databinding.ActivityOrQrScannerBinding
 import java.io.IOException
 
 class QrScannerActivity : AppCompatActivity() {
-    private var binding: ActivityOrQrScannerBinding? = null
-    private var surfaceView: SurfaceView? = null
-    private var barcodeDetector: BarcodeDetector? = null
-    private var cameraSource: CameraSource? = null
-    private var cameraDisclosureShown = false
+  private var binding: ActivityOrQrScannerBinding? = null
+  private var surfaceView: SurfaceView? = null
+  private var barcodeDetector: BarcodeDetector? = null
+  private var cameraSource: CameraSource? = null
+  private var cameraDisclosureShown = false
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        binding = ActivityOrQrScannerBinding.inflate(layoutInflater)
-        val view = binding!!.root
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    binding = ActivityOrQrScannerBinding.inflate(layoutInflater)
+    val view = binding!!.root
 
-        setContentView(view)
-        supportActionBar!!.title = "Scan QR Code"
-        initViews()
-        initialiseDetectorsAndSources()
+    setContentView(view)
+    supportActionBar!!.title = "Scan QR Code"
+    initViews()
+    initialiseDetectorsAndSources()
 
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                val data = Intent()
-                data.putExtra("result", "CANCELED")
-                setResult(RESULT_OK, data)
-                finish()
-            }
-        })
-    }
+    onBackPressedDispatcher.addCallback(
+      this,
+      object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+          val data = Intent()
+          data.putExtra("result", "CANCELED")
+          setResult(RESULT_OK, data)
+          finish()
+        }
+      },
+    )
+  }
 
-    private fun initViews() {
-        surfaceView = findViewById(R.id.surfaceView)
-    }
+  private fun initViews() {
+    surfaceView = findViewById(R.id.surfaceView)
+  }
 
-    @SuppressLint("MissingPermission")
-    private fun initialiseDetectorsAndSources() {
-        barcodeDetector = BarcodeDetector.Builder(this)
-            .setBarcodeFormats(Barcode.QR_CODE)
-            .build()
-        cameraSource = CameraSource.Builder(this, barcodeDetector)
-            .setAutoFocusEnabled(true) //you should add this feature
-            .setFacing(CameraSource.CAMERA_FACING_BACK)
-            .build()
-        surfaceView!!.holder.addCallback(object : SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: SurfaceHolder) {
-                try {
-                    if (ActivityCompat.checkSelfPermission(
-                            this@QrScannerActivity,
-                            Manifest.permission.CAMERA
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        cameraSource!!.start(surfaceView!!.holder)
-                    } else if (!cameraDisclosureShown) {
-                        cameraDisclosureShown = true
-                        PermissionDisclosures.show(
-                            this@QrScannerActivity,
-                            R.string.camera_disclosure_title,
-                            R.string.camera_disclosure_body,
-                            onAccept = {
-                                ActivityCompat.requestPermissions(
-                                    this@QrScannerActivity,
-                                    arrayOf(Manifest.permission.CAMERA),
-                                    REQUEST_CAMERA_PERMISSION
-                                )
-                            },
-                            onDecline = {
-                                setResult(RESULT_CANCELED)
-                                finish()
-                            }
-                        )
-                    }
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                }
-            }
-
-            override fun surfaceChanged(
-                holder: SurfaceHolder,
-                format: Int,
-                width: Int,
-                height: Int
-            ) {
-            }
-
-            override fun surfaceDestroyed(holder: SurfaceHolder) {
-                cameraSource!!.stop()
-            }
-        })
-        barcodeDetector!!.setProcessor(object : Detector.Processor<Barcode> {
-            override fun release() {
-            }
-
-            override fun receiveDetections(detections: Detections<Barcode>) {
-                val barcodes = detections.detectedItems
-                if (barcodes.size() != 0) {
-                    val data = Intent()
-                    data.putExtra("result", barcodes.valueAt(0).displayValue)
-                    setResult(RESULT_OK, data)
-                    finish()
-                }
-            }
-        })
-    }
-
-    @SuppressLint("MissingPermission")
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CAMERA_PERMISSION && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+  @SuppressLint("MissingPermission")
+  private fun initialiseDetectorsAndSources() {
+    barcodeDetector = BarcodeDetector.Builder(this).setBarcodeFormats(Barcode.QR_CODE).build()
+    cameraSource =
+      CameraSource.Builder(this, barcodeDetector)
+        .setAutoFocusEnabled(true) // you should add this feature
+        .setFacing(CameraSource.CAMERA_FACING_BACK)
+        .build()
+    surfaceView!!
+      .holder
+      .addCallback(
+        object : SurfaceHolder.Callback {
+          override fun surfaceCreated(holder: SurfaceHolder) {
             try {
+              if (
+                ActivityCompat.checkSelfPermission(
+                  this@QrScannerActivity,
+                  Manifest.permission.CAMERA,
+                ) == PackageManager.PERMISSION_GRANTED
+              ) {
                 cameraSource!!.start(surfaceView!!.holder)
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-        } else {
-            AlertDialog.Builder(this)
-                .setIcon(R.mipmap.ic_launcher)
-                .setTitle(R.string.camera_needed_alert_title)
-                .setMessage(R.string.camera_needed_alert_body)
-                .setNegativeButton(R.string.no) { _, _ ->
+              } else if (!cameraDisclosureShown) {
+                cameraDisclosureShown = true
+                PermissionDisclosures.show(
+                  this@QrScannerActivity,
+                  R.string.camera_disclosure_title,
+                  R.string.camera_disclosure_body,
+                  onAccept = {
+                    ActivityCompat.requestPermissions(
+                      this@QrScannerActivity,
+                      arrayOf(Manifest.permission.CAMERA),
+                      REQUEST_CAMERA_PERMISSION,
+                    )
+                  },
+                  onDecline = {
                     setResult(RESULT_CANCELED)
                     finish()
-                }
-                .setPositiveButton(R.string.yes) { dialog, which ->
-                    ActivityCompat.requestPermissions(
-                        this,
-                        arrayOf(Manifest.permission.CAMERA),
-                        REQUEST_CAMERA_PERMISSION
-                    )
-                }
-                .show()
-        }
-    }
+                  },
+                )
+              }
+            } catch (e: IOException) {
+              e.printStackTrace()
+            }
+          }
 
-    override fun onDestroy() {
-        if (barcodeDetector != null) {
-            barcodeDetector!!.release()
-            barcodeDetector = null
-        }
+          override fun surfaceChanged(
+            holder: SurfaceHolder,
+            format: Int,
+            width: Int,
+            height: Int,
+          ) {}
 
-        if (cameraSource != null) {
+          override fun surfaceDestroyed(holder: SurfaceHolder) {
             cameraSource!!.stop()
-            cameraSource!!.release()
-            cameraSource = null
+          }
         }
-        super.onDestroy()
+      )
+    barcodeDetector!!.setProcessor(
+      object : Detector.Processor<Barcode> {
+        override fun release() {}
+
+        override fun receiveDetections(detections: Detections<Barcode>) {
+          val barcodes = detections.detectedItems
+          if (barcodes.size() != 0) {
+            val data = Intent()
+            data.putExtra("result", barcodes.valueAt(0).displayValue)
+            setResult(RESULT_OK, data)
+            finish()
+          }
+        }
+      }
+    )
+  }
+
+  @SuppressLint("MissingPermission")
+  override fun onRequestPermissionsResult(
+    requestCode: Int,
+    permissions: Array<String>,
+    grantResults: IntArray,
+  ) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    if (
+      requestCode == REQUEST_CAMERA_PERMISSION &&
+        grantResults[0] == PackageManager.PERMISSION_GRANTED
+    ) {
+      try {
+        cameraSource!!.start(surfaceView!!.holder)
+      } catch (e: IOException) {
+        e.printStackTrace()
+      }
+    } else {
+      AlertDialog.Builder(this)
+        .setIcon(R.mipmap.ic_launcher)
+        .setTitle(R.string.camera_needed_alert_title)
+        .setMessage(R.string.camera_needed_alert_body)
+        .setNegativeButton(R.string.no) { _, _ ->
+          setResult(RESULT_CANCELED)
+          finish()
+        }
+        .setPositiveButton(R.string.yes) { dialog, which ->
+          ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.CAMERA),
+            REQUEST_CAMERA_PERMISSION,
+          )
+        }
+        .show()
+    }
+  }
+
+  override fun onDestroy() {
+    if (barcodeDetector != null) {
+      barcodeDetector!!.release()
+      barcodeDetector = null
     }
 
-    companion object {
-        private const val REQUEST_CAMERA_PERMISSION = 201
+    if (cameraSource != null) {
+      cameraSource!!.stop()
+      cameraSource!!.release()
+      cameraSource = null
     }
+    super.onDestroy()
+  }
+
+  companion object {
+    private const val REQUEST_CAMERA_PERMISSION = 201
+  }
 }
