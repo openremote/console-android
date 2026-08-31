@@ -11,8 +11,8 @@ OpenRemote applications are web applications which can run in a browser or insid
 Supported native functionality includes:
 
 - Firebase Cloud Messaging push notifications
-- geofencing and location services
-- secure local storage
+- Geofencing and location services
+- Secure local storage
 - QR code scanning
 - ESP32 provisioning over Bluetooth Low Energy (BLE)
 
