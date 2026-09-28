@@ -356,39 +356,39 @@ class GeofenceProvider(val context: Context) {
     LOG.info("Enabling geofence provider")
 
     Thread {
-        val hasPermission =
-          when {
-            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q -> {
-              context.checkSelfPermission(ACCESS_BACKGROUND_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED
-            }
-            else -> {
-              context.checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            }
+      val hasPermission =
+        when {
+          android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q -> {
+            context.checkSelfPermission(ACCESS_BACKGROUND_LOCATION) ==
+              PackageManager.PERMISSION_GRANTED
           }
-
-        callback?.accept(
-          hashMapOf(
-            "action" to "PROVIDER_ENABLE",
-            "provider" to "geofence",
-            "hasPermission" to hasPermission,
-            "success" to true,
-          )
-        )
-
-        if (hasPermission) {
-          LOG.info("Has permission so fetching geofences")
-
-          if (getGeofences(context).isEmpty()) {
-            // Could be first time getting geofences so wait a few seconds for backend to catch up
-            Timer().schedule(10000) {
-              refreshGeofences()
-            }
-          } else {
-            refreshGeofences()
+          else -> {
+            context.checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
           }
         }
+
+      callback?.accept(
+        hashMapOf(
+          "action" to "PROVIDER_ENABLE",
+          "provider" to "geofence",
+          "hasPermission" to hasPermission,
+          "success" to true,
+        )
+      )
+
+      if (hasPermission) {
+        LOG.info("Has permission so fetching geofences")
+
+        if (getGeofences(context).isEmpty()) {
+          // Could be first time getting geofences so wait a few seconds for backend to catch up
+          Timer().schedule(10000) {
+            refreshGeofences()
+          }
+        } else {
+          refreshGeofences()
+        }
       }
+    }
       .start()
   }
 
