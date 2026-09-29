@@ -1,5 +1,5 @@
 [versions]
-agp = "9.3.2"
+agp = "9.4.0"
 androidx-appcompat = "1.7.1"
 androidx-constraintlayout = "2.2.2"
 androidx-core-ktx = "1.18.0"
@@ -11,7 +11,7 @@ coroutines = "1.11.0"
 esp-idf-provisioning = "lib-2.4.4"
 espresso = "3.7.0"
 eventbus = "3.3.1"
-firebase-bom = "34.18.0"
+firebase-bom = "34.19.0"
 google-services-plugin = "4.5.0"
 # Jackson is pinned below 2.20: 2.20+ emits MethodHandle.invokeExact value-class bytecode
 # that D8 rejects for minSdk < 26 (this project is minSdk 25). The catalog's
