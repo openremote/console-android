@@ -43,7 +43,6 @@ This is the basis of the official OpenRemote Android app and can also be used as
 Available from:
 
 - [Google Play](https://play.google.com/store/apps/details?id=io.openremote.app)
-- [Maven Central (`io.openremote:app`)](https://central.sonatype.com/artifact/io.openremote/app)
 
 ### `protobuf`
 
